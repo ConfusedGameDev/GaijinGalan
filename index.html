@@ -91,12 +91,31 @@
 
   .hidden{display:none;}
   .note{font-size:.72rem; color:var(--muted); text-align:center; margin-top:10px;}
+  .note button{background:none; border:none; color:var(--muted); text-decoration:underline; cursor:pointer; font-size:.72rem;}
+
+  /* pantalla de bienvenida */
+  .overlay{position:fixed; inset:0; background:rgba(14,8,24,.9); display:none;
+    align-items:center; justify-content:center; z-index:10; padding:16px;}
+  .wpanel{background:var(--panel); border-radius:18px; padding:28px 26px; max-width:420px; width:100%;
+    text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.5);}
+  .wpanel h2{font-size:1.6rem; letter-spacing:1px; margin-bottom:6px;}
+  .wsub{color:var(--muted); font-size:.88rem; margin-bottom:20px;}
+  .wlabel{display:block; text-align:left; font-size:.78rem; color:var(--muted);
+    text-transform:uppercase; letter-spacing:1.5px; margin:14px 0 6px;}
+  #nameInput{width:100%; background:#150c22; border:2px solid #3a2a58; border-radius:10px;
+    color:var(--text); padding:11px 14px; font-size:1rem;}
+  #nameInput:focus{outline:none; border-color:var(--accent);}
+  .levels{display:grid; grid-template-columns:repeat(5,1fr); gap:8px;}
+  .lvl{background:#3a2a58; color:var(--text); border:2px solid transparent; border-radius:10px;
+    padding:10px 0; font-size:.95rem; font-weight:700; cursor:pointer;}
+  .lvl.sel{background:#4a1e33; border-color:var(--accent); color:#ffb3c8;}
+  .lvl.lock{opacity:.35; cursor:not-allowed; font-size:.8rem;}
+  .wsmall{font-size:.72rem; color:var(--muted); margin-top:8px;}
 </style>
 </head>
 <body>
 <div class="app">
   <h1>GAIJIN <span class="jp">GALÁN</span> 💘</h1>
-  <div class="subtitle">Aprende japonés (SRS) o vuélvete apestoso frente a Hikari-chan</div>
 
   <div class="charm-wrap">
     <div class="charm-top">
@@ -205,7 +224,7 @@
           <g class="fly2"><ellipse cx="160" cy="54" rx="4.5" ry="3.2" fill="#222"/><ellipse cx="163" cy="51" rx="2.5" ry="1.6" fill="#9ecbff" opacity=".8"/></g>
         </g>
       </svg>
-      <div class="name">Tú — <span id="playerTag">estudiante de por vida</span></div>
+      <div class="name"><span id="playerName">Tú</span> — <span id="playerTag">estudiante de por vida</span></div>
     </div>
 
     <div class="char" id="idolBox">
@@ -329,13 +348,33 @@
   </div>
 
   <div class="stats">
+    <span>Nivel: <b id="stLevel">N5</b></span>
     <span>Racha: <b class="combo" id="combo">0🔥</b></span>
     <span>Vistas: <b id="stSeen">0</b>/<b id="stTotal">0</b></span>
     <span>Dominadas: <b id="stMastered">0</b></span>
     <span>Aciertos: <b id="stAcc">–</b></span>
     <span>Repasos: <b id="stReviews">0</b></span>
   </div>
-  <div class="note">Sistema de repetición espaciada: las cartas falladas vuelven pronto; las dominadas, cada vez más tarde. El progreso dura mientras la página esté abierta.</div>
+  <div class="note">Sistema de repetición espaciada: las cartas falladas vuelven pronto; las dominadas, cada vez más tarde. Tu progreso se guarda solo en este navegador. <button id="resetBtn">reiniciar progreso</button></div>
+</div>
+
+<div class="overlay" id="welcome">
+  <div class="wpanel">
+    <h2>GAIJIN <span class="jp">GALÁN</span> 💘</h2>
+    <div class="wsub">Un gaijin, una idol, y todo el japonés que tendrás que aprender para impresionarla.</div>
+    <label class="wlabel" for="nameInput">Tu nombre</label>
+    <input id="nameInput" maxlength="16" placeholder="Gaijin-kun" autocomplete="off">
+    <label class="wlabel">Nivel JLPT</label>
+    <div class="levels">
+      <button class="lvl sel" id="lvlN5">N5</button>
+      <button class="lvl lock" disabled>N4 🔒</button>
+      <button class="lvl lock" disabled>N3 🔒</button>
+      <button class="lvl lock" disabled>N2 🔒</button>
+      <button class="lvl lock" disabled>N1 🔒</button>
+    </div>
+    <div class="wsmall">Domina el mazo N5 para desbloquear el siguiente nivel</div>
+    <button id="startBtn" class="next-btn" style="display:inline-block">¡Empezar! →</button>
+  </div>
 </div>
 
 <script>
@@ -516,6 +555,27 @@ let lastEstado = 2;
 function say(txt){ $('bubble').textContent = txt; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
+/* ============ GUARDADO ============ */
+const SAVE_KEY = 'gaijinGalanSave_v1';
+let playerName = 'Gaijin', level = 'N5';
+
+function saveGame(){
+  try{
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      name: playerName, level, charm, reviews, correct, bestCombo, lastEstado,
+      deck: DECK.map(c=>[c.box, c.due, c.seen?1:0])
+    }));
+  }catch(e){ /* modo privado o storage bloqueado: se juega sin guardar */ }
+}
+function loadGame(){
+  try{
+    const d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(!d || !Array.isArray(d.deck) || d.deck.length !== DECK.length) return null;
+    return d;
+  }catch(e){ return null; }
+}
+function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+
 /* ============ FLUJO DEL JUEGO ============ */
 const PROMPTS = {kanji:'¿Qué significa este kanji?', vocab:'¿Qué significa esta palabra?', grammar:'¿Qué hace en: '};
 
@@ -580,6 +640,7 @@ function answer(btn, choice){
   lastEstado = ei;
 
   renderPlayer(); renderIdol(); renderStats();
+  saveGame();
   $('nextBtn').style.display = 'inline-block';
   $('nextBtn').focus();
 }
@@ -602,6 +663,7 @@ function renderStats(){
 
 document.getElementById('nextBtn').onclick = dealCard;
 document.addEventListener('keydown', e=>{
+  if($('welcome').style.display==='flex') return;
   if(e.key==='Enter' && $('nextBtn').style.display!=='none') dealCard();
   const n = parseInt(e.key);
   if(n>=1 && n<=4 && !locked){
@@ -610,7 +672,46 @@ document.addEventListener('keydown', e=>{
   }
 });
 
-renderPlayer(); renderIdol(); renderStats(); dealCard();
+/* ============ INICIO ============ */
+function startGame(returning){
+  $('playerName').textContent = playerName;
+  $('stLevel').textContent = level;
+  renderPlayer(); renderIdol(); renderStats(); dealCard();
+  say(returning
+    ? '¡Volviste, '+playerName+'! おかえり〜 Tus cartas te extrañaban. 📚'
+    : 'こんにちは、'+playerName+'… ¿Tú eres el gaijin nuevo? Demuéstrame que estudias japonés. 📚');
+}
+
+$('startBtn').onclick = ()=>{
+  playerName = $('nameInput').value.trim() || 'Gaijin';
+  level = 'N5';
+  $('welcome').style.display = 'none';
+  saveGame();
+  startGame(false);
+};
+$('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('startBtn').click(); });
+$('resetBtn').onclick = ()=>{
+  if(confirm('¿Borrar todo tu progreso? Hikari te olvidará por completo.')){
+    clearSave(); location.reload();
+  }
+};
+
+const _save = loadGame();
+if(_save){
+  playerName = _save.name || 'Gaijin';
+  level = _save.level || 'N5';
+  charm = typeof _save.charm==='number' ? _save.charm : 50;
+  reviews = _save.reviews || 0;
+  correct = _save.correct || 0;
+  bestCombo = _save.bestCombo || 0;
+  lastEstado = typeof _save.lastEstado==='number' ? _save.lastEstado : 2;
+  _save.deck.forEach((d,i)=>{ DECK[i].box=d[0]; DECK[i].due=d[1]; DECK[i].seen=!!d[2]; });
+  startGame(true);
+} else {
+  $('welcome').style.display = 'flex';
+  renderPlayer(); renderIdol(); renderStats();
+  setTimeout(()=>$('nameInput').focus(), 100);
+}
 </script>
 </body>
 </html>
