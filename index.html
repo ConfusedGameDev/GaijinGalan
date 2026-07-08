@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gaijin Galán 💘 SRS de Japonés N5</title>
+<style>
+  :root{
+    --bg:#1a1028; --panel:#2a1d40; --panel2:#231736; --accent:#ff5c8a;
+    --gold:#ffd166; --good:#6ee7a0; --bad:#ff6b6b; --text:#f3eefa; --muted:#a894c9;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Segoe UI', system-ui, sans-serif; background:
+    radial-gradient(circle at 20% 10%, #3b2160 0%, var(--bg) 55%);
+    color:var(--text); min-height:100vh; display:flex; justify-content:center; padding:16px;
+  }
+  .app{width:100%; max-width:760px;}
+  h1{font-size:1.5rem; text-align:center; letter-spacing:1px;}
+  h1 .jp{color:var(--accent);}
+  .subtitle{text-align:center; color:var(--muted); font-size:.85rem; margin-bottom:12px;}
+
+  /* barra de encanto */
+  .charm-wrap{background:var(--panel2); border-radius:12px; padding:10px 14px; margin-bottom:12px;}
+  .charm-top{display:flex; justify-content:space-between; font-size:.85rem; margin-bottom:6px;}
+  .estado{font-weight:700;}
+  .charm-bar{height:14px; background:#150c22; border-radius:7px; overflow:hidden;}
+  .charm-fill{height:100%; width:50%; border-radius:7px;
+    background:linear-gradient(90deg,#8b5a2b,#ffd166,#ff5c8a); transition:width .5s;}
+  .hearts{letter-spacing:2px; font-size:1rem;}
+
+  /* escena */
+  .scene{display:flex; gap:10px; justify-content:center; align-items:flex-end; margin-bottom:10px;}
+  .char{background:var(--panel2); border-radius:14px; padding:8px; text-align:center; flex:1; max-width:230px;}
+  .char .name{font-size:.8rem; color:var(--muted); margin-top:4px;}
+  svg{width:100%; height:auto; max-height:190px;}
+
+  .bubble{
+    background:#fff; color:#33224d; border-radius:14px; padding:10px 14px; font-size:.95rem;
+    position:relative; margin:0 auto 14px; max-width:560px; min-height:44px; text-align:center;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+  }
+  .bubble::after{content:''; position:absolute; top:-9px; right:22%; border:10px solid transparent;
+    border-bottom-color:#fff; border-top:0;}
+
+  /* tarjeta */
+  .card{background:var(--panel); border-radius:16px; padding:18px; text-align:center; margin-bottom:12px;
+    box-shadow:0 6px 20px rgba(0,0,0,.3);}
+  .card .tipo{font-size:.72rem; text-transform:uppercase; letter-spacing:2px; color:var(--muted);}
+  .card .prompt{font-size:.9rem; color:var(--muted); margin:4px 0 8px;}
+  .card .front{font-size:3.4rem; margin:6px 0 4px; font-family:'Yu Gothic','Hiragino Sans','Noto Sans JP',sans-serif;}
+  .card .reading{color:var(--gold); font-size:1rem; min-height:1.3em;}
+  .opts{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;}
+  .opts button{
+    background:#3a2a58; color:var(--text); border:2px solid transparent; border-radius:12px;
+    padding:13px 10px; font-size:1rem; cursor:pointer; transition:transform .08s, background .2s;
+  }
+  .opts button:hover:not(:disabled){background:#4a3670; transform:translateY(-2px);}
+  .opts button:disabled{cursor:default; opacity:.9;}
+  .opts button.ok{background:#1e5a3a; border-color:var(--good);}
+  .opts button.mal{background:#5a1e2a; border-color:var(--bad);}
+  .next-btn{
+    margin-top:14px; background:var(--accent); color:#fff; border:none; border-radius:12px;
+    padding:12px 34px; font-size:1rem; font-weight:700; cursor:pointer; display:none;
+  }
+  .next-btn:hover{filter:brightness(1.1);}
+  .feedback{margin-top:10px; font-size:.95rem; min-height:1.4em;}
+  .feedback .info{color:var(--muted); font-size:.85rem;}
+
+  /* pie de estadísticas */
+  .stats{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; font-size:.78rem; color:var(--muted);}
+  .stats span{background:var(--panel2); border-radius:8px; padding:5px 10px;}
+  .stats b{color:var(--text);}
+  .combo{color:var(--gold); font-weight:700;}
+
+  /* animaciones */
+  @keyframes flyorbit{0%{transform:translate(0,0);}25%{transform:translate(9px,-7px);}50%{transform:translate(-6px,-12px);}75%{transform:translate(-10px,-3px);}100%{transform:translate(0,0);}}
+  .fly{animation:flyorbit 1.6s infinite linear;}
+  .fly2{animation:flyorbit 2.1s infinite linear reverse;}
+  @keyframes stink{0%,100%{opacity:.25; transform:translateY(0);}50%{opacity:.8; transform:translateY(-7px);}}
+  .stink{animation:stink 2s infinite ease-in-out;}
+  .stink.s2{animation-delay:.7s;}
+  @keyframes sparkle{0%,100%{opacity:.2; transform:scale(.7);}50%{opacity:1; transform:scale(1.15);}}
+  .spark{animation:sparkle 1.4s infinite; transform-origin:center; transform-box:fill-box;}
+  .spark.p2{animation-delay:.5s;}
+  @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+  .happy-bounce{animation:bounce .5s 2;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+  .shake{animation:shake .3s 2;}
+
+  .hidden{display:none;}
+  .note{font-size:.72rem; color:var(--muted); text-align:center; margin-top:10px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>GAIJIN <span class="jp">GALÁN</span> 💘</h1>
+  <div class="subtitle">Aprende japonés (SRS) o vuélvete apestoso frente a Hikari-chan</div>
+
+  <div class="charm-wrap">
+    <div class="charm-top">
+      <div>Encanto: <span class="estado" id="estadoLabel">Normalito 😐</span></div>
+      <div>Cariño de Hikari: <span class="hearts" id="hearts">🖤🖤🖤🖤🖤</span></div>
+    </div>
+    <div class="charm-bar"><div class="charm-fill" id="charmFill"></div></div>
+  </div>
+
+  <div class="scene">
+    <div class="char" id="playerBox">
+      <svg viewBox="0 0 200 240" id="playerSvg" aria-label="tú">
+        <!-- cuerpo -->
+        <rect x="60" y="185" width="80" height="55" rx="16" id="pShirt" fill="#3f6fd8"/>
+        <rect x="88" y="170" width="24" height="24" fill="#e8b48c"/>
+        <!-- cabeza -->
+        <ellipse cx="100" cy="120" rx="52" ry="58" fill="#e8b48c"/>
+        <!-- pelo ordenado -->
+        <g id="hairNeat">
+          <path d="M48 110 Q45 55 100 50 Q155 55 152 110 Q150 78 100 72 Q50 78 48 110 Z" fill="#2b1c12"/>
+        </g>
+        <!-- pelo desordenado -->
+        <g id="hairMessy" style="display:none">
+          <path d="M48 112 Q40 60 70 58 L64 44 L82 56 L86 38 L98 56 L112 40 L116 58 L134 46 L128 60 Q158 62 152 112 Q148 80 100 74 Q52 80 48 112 Z" fill="#3a2a20"/>
+        </g>
+        <!-- cejas -->
+        <path id="pBrowL" d="M66 102 Q77 96 88 101" stroke="#2b1c12" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path id="pBrowR" d="M112 101 Q123 96 134 102" stroke="#2b1c12" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <!-- ojos -->
+        <circle cx="78" cy="115" r="5.5" fill="#20140c" id="pEyeL"/>
+        <circle cx="122" cy="115" r="5.5" fill="#20140c" id="pEyeR"/>
+        <!-- ojeras -->
+        <g id="pBags" style="display:none">
+          <path d="M70 126 Q78 131 86 126" stroke="#8a6a9a" stroke-width="3" fill="none"/>
+          <path d="M114 126 Q122 131 130 126" stroke="#8a6a9a" stroke-width="3" fill="none"/>
+        </g>
+        <!-- nariz -->
+        <path d="M100 118 Q104 130 98 135" stroke="#c78f63" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <!-- bocas -->
+        <path id="pSmile" d="M82 150 Q100 165 118 150" stroke="#8a3d2a" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path id="pFlat" d="M85 154 L115 154" stroke="#8a3d2a" stroke-width="4" fill="none" stroke-linecap="round" style="display:none"/>
+        <path id="pFrown" d="M82 160 Q100 148 118 160" stroke="#8a3d2a" stroke-width="4" fill="none" stroke-linecap="round" style="display:none"/>
+        <!-- barba descuidada -->
+        <g id="pStubble" fill="#4a3527" style="display:none">
+          <circle cx="80" cy="152" r="1.6"/><circle cx="88" cy="160" r="1.6"/><circle cx="97" cy="165" r="1.6"/>
+          <circle cx="106" cy="162" r="1.6"/><circle cx="115" cy="156" r="1.6"/><circle cx="120" cy="148" r="1.6"/>
+          <circle cx="86" cy="147" r="1.6"/><circle cx="102" cy="157" r="1.6"/><circle cx="111" cy="167" r="1.6"/>
+          <circle cx="92" cy="169" r="1.6"/>
+        </g>
+        <!-- rosa de galán -->
+        <g id="pRose" style="display:none">
+          <line x1="118" y1="157" x2="136" y2="150" stroke="#2e7d32" stroke-width="3"/>
+          <circle cx="140" cy="148" r="7" fill="#e0245e"/>
+          <circle cx="140" cy="148" r="3.5" fill="#ad1a49"/>
+        </g>
+        <!-- brillitos -->
+        <g id="pSparkles" style="display:none" fill="#ffd166">
+          <path class="spark" d="M38 80 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z"/>
+          <path class="spark p2" d="M158 70 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 Z"/>
+          <path class="spark" d="M165 150 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5 Z"/>
+        </g>
+        <!-- humo apestoso -->
+        <g id="pStink" style="display:none" stroke="#7ec850" stroke-width="3.5" fill="none" stroke-linecap="round">
+          <path class="stink" d="M52 70 Q46 60 52 50 Q58 42 52 32"/>
+          <path class="stink s2" d="M148 70 Q154 60 148 50 Q142 42 148 32"/>
+          <path class="stink" d="M100 42 Q94 32 100 24"/>
+        </g>
+        <!-- moscas -->
+        <g id="pFlies" style="display:none">
+          <g class="fly"><ellipse cx="45" cy="45" rx="4.5" ry="3.2" fill="#222"/><ellipse cx="42" cy="42" rx="2.5" ry="1.6" fill="#9ecbff" opacity=".8"/></g>
+          <g class="fly2"><ellipse cx="160" cy="55" rx="4.5" ry="3.2" fill="#222"/><ellipse cx="163" cy="52" rx="2.5" ry="1.6" fill="#9ecbff" opacity=".8"/></g>
+        </g>
+      </svg>
+      <div class="name">Tú — <span id="playerTag">estudiante de por vida</span></div>
+    </div>
+
+    <div class="char" id="idolBox">
+      <svg viewBox="0 0 200 240" id="idolSvg" aria-label="Hikari-chan">
+        <!-- pelo largo detrás -->
+        <path d="M42 120 Q34 220 55 232 L145 232 Q166 220 158 120 Q158 60 100 52 Q42 60 42 120 Z" fill="#4a2c6d"/>
+        <!-- cuerpo -->
+        <rect x="62" y="188" width="76" height="52" rx="15" fill="#ff7ba9"/>
+        <rect x="90" y="172" width="20" height="22" fill="#ffdec9"/>
+        <!-- cabeza -->
+        <ellipse cx="100" cy="122" rx="48" ry="54" fill="#ffdec9"/>
+        <!-- flequillo -->
+        <path d="M52 112 Q50 60 100 56 Q150 60 148 112 Q140 84 122 90 Q126 74 108 82 Q100 70 92 82 Q74 74 78 90 Q60 84 52 112 Z" fill="#5b3a85"/>
+        <!-- moño -->
+        <g>
+          <circle cx="146" cy="70" r="6" fill="#ffd166"/>
+          <path d="M146 70 L130 58 L134 74 Z" fill="#ff5c8a"/>
+          <path d="M146 70 L162 58 L158 74 Z" fill="#ff5c8a"/>
+        </g>
+        <!-- ojos normales -->
+        <g id="iEyesNormal">
+          <ellipse cx="80" cy="118" rx="7" ry="9" fill="#3a1f5c"/>
+          <ellipse cx="120" cy="118" rx="7" ry="9" fill="#3a1f5c"/>
+          <circle cx="82" cy="114" r="2.4" fill="#fff"/>
+          <circle cx="122" cy="114" r="2.4" fill="#fff"/>
+        </g>
+        <!-- ojos corazón -->
+        <g id="iEyesHeart" style="display:none" fill="#ff2e6c">
+          <path d="M80 112 c-3-5-11-3-11 3 c0 5 8 9 11 12 c3-3 11-7 11-12 c0-6-8-8-11-3Z"/>
+          <path d="M120 112 c-3-5-11-3-11 3 c0 5 8 9 11 12 c3-3 11-7 11-12 c0-6-8-8-11-3Z"/>
+        </g>
+        <!-- ojos disgusto >< -->
+        <g id="iEyesUpset" style="display:none" stroke="#3a1f5c" stroke-width="4" fill="none" stroke-linecap="round">
+          <path d="M72 112 L88 122 M88 112 L72 122"/>
+          <path d="M112 112 L128 122 M128 112 L112 122"/>
+        </g>
+        <!-- rubor -->
+        <g id="iBlush">
+          <ellipse cx="68" cy="136" rx="8" ry="4.5" fill="#ffadc0" opacity=".8"/>
+          <ellipse cx="132" cy="136" rx="8" ry="4.5" fill="#ffadc0" opacity=".8"/>
+        </g>
+        <!-- bocas -->
+        <path id="iSmile" d="M86 150 Q100 162 114 150" stroke="#c2456b" stroke-width="4" fill="none" stroke-linecap="round"/>
+        <path id="iFlat" d="M88 154 L112 154" stroke="#c2456b" stroke-width="4" fill="none" stroke-linecap="round" style="display:none"/>
+        <path id="iFrown" d="M86 158 Q100 148 114 158" stroke="#c2456b" stroke-width="4" fill="none" stroke-linecap="round" style="display:none"/>
+        <!-- pinza en la nariz (peste) -->
+        <g id="iNosePin" style="display:none">
+          <rect x="92" y="128" width="16" height="8" rx="3" fill="#ffd166" stroke="#c9982d" stroke-width="1.5"/>
+        </g>
+        <!-- corazones flotando -->
+        <g id="iHearts" style="display:none" fill="#ff5c8a">
+          <path class="spark" d="M40 70 c-2.5-4-9-2.5-9 2.5 c0 4 6.5 7.5 9 10 c2.5-2.5 9-6 9-10 c0-5-6.5-6.5-9-2.5Z"/>
+          <path class="spark p2" d="M162 84 c-2-3.5-8-2-8 2 c0 3.5 6 6.5 8 8.5 c2-2 8-5 8-8.5 c0-4-6-5.5-8-2Z"/>
+        </g>
+      </svg>
+      <div class="name">Hikari-chan ✨ — idol</div>
+    </div>
+  </div>
+
+  <div class="bubble" id="bubble">こんにちは… ¿Tú eres el gaijin nuevo? Demuéstrame que estudias japonés. 📚</div>
+
+  <div class="card">
+    <div class="tipo" id="cardTipo">KANJI</div>
+    <div class="prompt" id="cardPrompt">¿Qué significa?</div>
+    <div class="front" id="cardFront">日</div>
+    <div class="reading" id="cardReading"></div>
+    <div class="opts" id="opts"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="nextBtn">Siguiente →</button>
+  </div>
+
+  <div class="stats">
+    <span>Racha: <b class="combo" id="combo">0🔥</b></span>
+    <span>Vistas: <b id="stSeen">0</b>/<b id="stTotal">0</b></span>
+    <span>Dominadas: <b id="stMastered">0</b></span>
+    <span>Aciertos: <b id="stAcc">–</b></span>
+    <span>Repasos: <b id="stReviews">0</b></span>
+  </div>
+  <div class="note">Sistema de repetición espaciada: las cartas falladas vuelven pronto; las dominadas, cada vez más tarde. El progreso dura mientras la página esté abierta.</div>
+</div>
+
+<script>
+'use strict';
+/* ============ CONTENIDO N5 ============ */
+const KANJI = [
+  ['日','にち・ひ','día / sol'],['月','げつ・つき','luna / mes'],['火','か・ひ','fuego'],
+  ['水','すい・みず','agua'],['木','もく・き','árbol'],['金','きん・かね','oro / dinero'],
+  ['土','ど・つち','tierra'],['山','さん・やま','montaña'],['川','せん・かわ','río'],
+  ['人','じん・ひと','persona'],['口','こう・くち','boca'],['目','もく・め','ojo'],
+  ['手','しゅ・て','mano'],['足','そく・あし','pie / pierna'],['心','しん・こころ','corazón'],
+  ['大','だい・おお','grande'],['小','しょう・ちい','pequeño'],['中','ちゅう・なか','medio / dentro'],
+  ['上','じょう・うえ','arriba'],['下','か・した','abajo'],['左','さ・ひだり','izquierda'],
+  ['右','う・みぎ','derecha'],['前','ぜん・まえ','delante / antes'],['後','ご・あと','detrás / después'],
+  ['男','だん・おとこ','hombre'],['女','じょ・おんな','mujer'],['子','し・こ','niño / hijo'],
+  ['学','がく','estudio / aprender'],['校','こう','escuela (edificio)'],['先','せん・さき','previo / delante'],
+  ['生','せい・い','vida / nacer'],['年','ねん・とし','año'],['時','じ・とき','hora / tiempo'],
+  ['分','ふん・わ','minuto / dividir'],['今','こん・いま','ahora'],['何','なに','qué'],
+  ['本','ほん','libro / origen'],['語','ご','idioma / palabra'],['食','しょく・た','comer'],
+  ['飲','いん・の','beber'],
+].map(([f,r,a])=>({type:'kanji', front:f, reading:r, answer:a}));
+
+const VOCAB = [
+  ['こんにちは','','hola / buenas tardes'],['ありがとう','','gracias'],['すみません','','disculpe / perdón'],
+  ['はい','','sí'],['いいえ','','no'],['私','わたし','yo'],['好き','すき','gustar / querer'],
+  ['猫','ねこ','gato'],['犬','いぬ','perro'],['ご飯','ごはん','arroz / comida'],
+  ['学校','がっこう','escuela'],['先生','せんせい','maestro / profesor'],['友達','ともだち','amigo'],
+  ['名前','なまえ','nombre'],['今日','きょう','hoy'],['明日','あした','mañana (día)'],
+  ['昨日','きのう','ayer'],['時間','じかん','tiempo / hora (duración)'],['電車','でんしゃ','tren'],
+  ['家','いえ','casa'],['大きい','おおきい','grande (adj.)'],['小さい','ちいさい','pequeño (adj.)'],
+  ['高い','たかい','alto / caro'],['安い','やすい','barato'],['新しい','あたらしい','nuevo'],
+  ['古い','ふるい','viejo (cosas)'],['可愛い','かわいい','lindo / tierno'],['綺麗','きれい','bonito / limpio'],
+  ['楽しい','たのしい','divertido'],['美味しい','おいしい','delicioso'],
+].map(([f,r,a])=>({type:'vocab', front:f, reading:r, answer:a}));
+
+const GRAMMAR = [
+  ['は','わたし＿がくせいです','marca el tema de la frase'],
+  ['が','ねこ＿います','marca el sujeto / lo nuevo'],
+  ['を','ごはん＿たべます','marca el objeto directo'],
+  ['に','がっこう＿いきます','marca destino / hora'],
+  ['で','いえ＿べんきょうします','marca lugar de la acción / medio'],
+  ['の','わたし＿ねこ','posesivo: "de" (mi gato)'],
+  ['です','がくせい＿','"ser/estar", forma cortés'],
+  ['〜ます','たべ＿','terminación cortés del verbo'],
+  ['か','がくせいです＿？','convierte la frase en pregunta'],
+  ['ね','かわいいです＿','busca acuerdo: "¿verdad?"'],
+  ['よ','おいしいです＿','énfasis: da información nueva'],
+  ['〜たい','たべ＿です','expresa "querer hacer algo"'],
+].map(([f,r,a])=>({type:'grammar', front:f, reading:r, answer:a}));
+
+const DECK = [...KANJI, ...VOCAB, ...GRAMMAR].map((c,i)=>({
+  ...c, id:i, box:0, due:0, seen:false
+}));
+
+/* ============ SRS (Leitner) ============ */
+const INTERVALS = [0, 3, 8, 20, 50, 120]; // repasos de espera por caja
+const MAX_BOX = 5, MASTER_BOX = 4;
+let reviews = 0, correct = 0, combo = 0, bestCombo = 0;
+let charm = 50;
+let current = null, locked = false;
+
+function pickCard(){
+  const fresh = DECK.filter(c=>!c.seen);
+  // cada 4 repasos entra carta nueva, para que el mazo avance aunque haya pendientes
+  if(fresh.length && reviews>0 && reviews%4===0) return fresh[Math.floor(Math.random()*Math.min(3,fresh.length))];
+  const due = DECK.filter(c=>c.seen && c.due<=reviews && c!==current);
+  if(due.length){ due.sort((a,b)=>a.due-b.due); return due[0]; }
+  if(fresh.length) return fresh[Math.floor(Math.random()*Math.min(3,fresh.length))];
+  const soon = DECK.filter(c=>c!==current).sort((a,b)=>a.due-b.due);
+  return soon[0] || current;
+}
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function optionsFor(card){
+  const pool = DECK.filter(c=>c.type===card.type && c.answer!==card.answer);
+  const seen = new Set([card.answer]);
+  const distractors = [];
+  for(const c of shuffle([...pool])){
+    if(!seen.has(c.answer)){ seen.add(c.answer); distractors.push(c.answer); }
+    if(distractors.length===3) break;
+  }
+  return shuffle([card.answer, ...distractors]);
+}
+
+/* ============ APARIENCIA ============ */
+const ESTADOS = [
+  {min:85, label:'Leyenda Latina 😎✨', tag:'peligrosamente guapo'},
+  {min:65, label:'Galán 😏', tag:'huele a colonia cara'},
+  {min:40, label:'Normalito 😐', tag:'estudiante de por vida'},
+  {min:20, label:'Fachas 😩', tag:'durmió en el tren'},
+  {min:0,  label:'Apestoso 🤢🪰', tag:'las moscas son sus únicas amigas'},
+];
+function estadoIdx(){ return ESTADOS.findIndex(e=>charm>=e.min); }
+
+const $ = id=>document.getElementById(id);
+function show(id,on){ $(id).style.display = on?'':'none'; }
+
+function renderPlayer(){
+  const i = estadoIdx(); // 0 mejor … 4 peor
+  show('hairNeat', i<=2); show('hairMessy', i>=3);
+  show('pSparkles', i===0); show('pRose', i===0);
+  show('pStubble', i>=3); show('pBags', i>=3);
+  show('pStink', i===4); show('pFlies', i===4);
+  show('pSmile', i<=1); show('pFlat', i===2); show('pFrown', i>=3);
+  $('pShirt').setAttribute('fill', ['#c62d5c','#3f6fd8','#3f6fd8','#6b705c','#4a5240'][i]);
+  $('estadoLabel').textContent = ESTADOS[i].label;
+  $('playerTag').textContent = ESTADOS[i].tag;
+  $('charmFill').style.width = charm+'%';
+}
+
+function renderIdol(){
+  const i = estadoIdx();
+  const mood = i===0?'love' : i===1?'happy' : i===2?'neutral' : i===3?'worried' : 'gross';
+  show('iEyesNormal', mood==='happy'||mood==='neutral'||mood==='worried');
+  show('iEyesHeart', mood==='love');
+  show('iEyesUpset', mood==='gross');
+  show('iSmile', mood==='love'||mood==='happy');
+  show('iFlat', mood==='neutral');
+  show('iFrown', mood==='worried'||mood==='gross');
+  show('iHearts', mood==='love');
+  show('iNosePin', mood==='gross');
+  show('iBlush', mood==='love'||mood==='happy');
+}
+
+/* ============ DIÁLOGO ============ */
+const LINES = {
+  correctA:[ // encanto alto
+    '¡Sugoi! すごい… ¿Siempre fuiste así de listo? 😳',
+    'Kakkoii… digo… ¡s-sigue estudiando! 💕',
+    '¡Correcto! Hoy hueles a… ¿colonia? Me gusta. ✨',
+    '¿Un gaijin que estudia kanji? Mi corazón… ドキドキ 💓',
+  ],
+  correctB:[ // encanto medio
+    '¡Bien! せいかい。Vas mejorando. 😊',
+    '¡Correcto! Sigue así y quizás te dé mi Line. 📱',
+    'Nada mal para un gaijin. がんばって！',
+    '¡Eso es! Un punto para el equipo latino. ⚽',
+  ],
+  wrongA:[ // encanto medio
+    'Mmm… incorrecto. ¿Dormiste bien? 😕',
+    'Casi… pero no. ざんねん。',
+    'Ay… mi abuela sabe más kanji que tú. 👵',
+    'Incorrecto~ ¿Seguro que estudiaste?',
+  ],
+  wrongB:[ // encanto bajo
+    '¿Qué es ese olor…? Ah. Eres tú. 🥴',
+    '¡Kusai! くさい！¡Aléjate un poquito, por favor! 🪰',
+    'Voy a… pararme por allá. Lejos. Muy lejos. 🏃‍♀️',
+    'Seguridad… ¿SEGURIDAD? 😨',
+  ],
+  master:[
+    '¡¿Dominaste esa carta?! Eres… increíble. 💘',
+    '¡Otra carta dominada! Hikari está impresionada. 🌟',
+  ],
+  comeback:'¡Volviste a bañarte! Digo… ¡qué bien te ves hoy! 😊',
+};
+let lastEstado = 2;
+function say(txt){ $('bubble').textContent = txt; }
+function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+/* ============ FLUJO DEL JUEGO ============ */
+const PROMPTS = {kanji:'¿Qué significa este kanji?', vocab:'¿Qué significa esta palabra?', grammar:'¿Qué hace en: '};
+
+function dealCard(){
+  current = pickCard();
+  locked = false;
+  current.seen = true;
+  $('cardTipo').textContent = current.type==='kanji'?'KANJI':current.type==='vocab'?'VOCABULARIO':'GRAMÁTICA';
+  $('cardPrompt').textContent = current.type==='grammar'
+    ? '¿Qué hace en: 「'+current.reading+'」?' : PROMPTS[current.type];
+  $('cardFront').textContent = current.front;
+  $('cardReading').textContent = '';
+  $('feedback').innerHTML = '';
+  $('nextBtn').style.display = 'none';
+  const opts = $('opts'); opts.innerHTML = '';
+  for(const o of optionsFor(current)){
+    const b = document.createElement('button');
+    b.textContent = o;
+    b.onclick = ()=>answer(b, o);
+    opts.appendChild(b);
+  }
+}
+
+function answer(btn, choice){
+  if(locked) return; locked = true;
+  reviews++;
+  const ok = choice===current.answer;
+  [...$('opts').children].forEach(b=>{
+    b.disabled = true;
+    if(b.textContent===current.answer) b.classList.add('ok');
+    else if(b===btn && !ok) b.classList.add('mal');
+  });
+  if(current.type!=='grammar' && current.reading) $('cardReading').textContent = '📖 '+current.reading;
+
+  const wasMastered = current.box>=MASTER_BOX;
+  if(ok){
+    correct++; combo++; bestCombo=Math.max(bestCombo,combo);
+    current.box = Math.min(MAX_BOX, current.box+1);
+    charm = Math.min(100, charm + 4 + (combo>=5?2:0));
+    $('feedback').innerHTML = '✅ ¡Correcto!' + (combo>=3?' <span class="combo">Racha x'+combo+' 🔥</span>':'');
+    $('idolBox').classList.remove('shake'); void $('idolBox').offsetWidth;
+    $('idolBox').classList.add('happy-bounce');
+    setTimeout(()=>$('idolBox').classList.remove('happy-bounce'), 1200);
+  } else {
+    combo = 0;
+    current.box = 0;
+    charm = Math.max(0, charm - 8);
+    $('feedback').innerHTML = '❌ Era: <b>'+current.answer+'</b><div class="info">Esta carta volverá pronto. ¡El SRS no perdona!</div>';
+    $('playerBox').classList.remove('happy-bounce'); void $('playerBox').offsetWidth;
+    $('playerBox').classList.add('shake');
+    setTimeout(()=>$('playerBox').classList.remove('shake'), 700);
+  }
+  current.due = reviews + INTERVALS[current.box];
+
+  // diálogo
+  const nowMastered = current.box>=MASTER_BOX;
+  const ei = estadoIdx();
+  if(ok && !wasMastered && nowMastered) say(pick(LINES.master));
+  else if(ok) say(pick(ei<=1 ? LINES.correctA : LINES.correctB));
+  else say(pick(ei>=3 ? LINES.wrongB : LINES.wrongA));
+  if(ei<lastEstado && ei<=1 && lastEstado>=3) say(LINES.comeback);
+  lastEstado = ei;
+
+  renderPlayer(); renderIdol(); renderStats();
+  $('nextBtn').style.display = 'inline-block';
+  $('nextBtn').focus();
+}
+
+function renderStats(){
+  const mastered = DECK.filter(c=>c.box>=MASTER_BOX).length;
+  $('stSeen').textContent = DECK.filter(c=>c.seen).length;
+  $('stTotal').textContent = DECK.length;
+  $('stMastered').textContent = mastered;
+  $('stReviews').textContent = reviews;
+  $('stAcc').textContent = reviews? Math.round(100*correct/reviews)+'%' : '–';
+  $('combo').textContent = combo+'🔥';
+  // cariño: corazones por cartas dominadas
+  const h = Math.min(5, Math.floor(mastered / (DECK.length/5)) + (charm>=85?1:0));
+  $('hearts').textContent = '❤️'.repeat(Math.min(5,h)) + '🖤'.repeat(Math.max(0,5-h));
+}
+
+document.getElementById('nextBtn').onclick = dealCard;
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && $('nextBtn').style.display!=='none') dealCard();
+  const n = parseInt(e.key);
+  if(n>=1 && n<=4 && !locked){
+    const b = $('opts').children[n-1];
+    if(b) b.click();
+  }
+});
+
+renderPlayer(); renderIdol(); renderStats(); dealCard();
+</script>
+</body>
+</html>
