@@ -476,15 +476,16 @@ function pickCard(){
 
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 
-function optionsFor(card){
-  const pool = DECK.filter(c=>c.type===card.type && c.answer!==card.answer);
-  const seen = new Set([card.answer]);
+function optionsFor(card, facet){
+  const key = facet==='reading' ? 'reading' : 'answer';
+  const pool = DECK.filter(c=>c.type===card.type && c[key] && c[key]!==card[key]);
+  const seen = new Set([card[key]]);
   const distractors = [];
   for(const c of shuffle([...pool])){
-    if(!seen.has(c.answer)){ seen.add(c.answer); distractors.push(c.answer); }
+    if(!seen.has(c[key])){ seen.add(c[key]); distractors.push(c[key]); }
     if(distractors.length===3) break;
   }
-  return shuffle([card.answer, ...distractors]);
+  return shuffle([card[key], ...distractors]);
 }
 
 /* ============ APARIENCIA ============ */
@@ -636,8 +637,9 @@ function sessionUI(){
   if(fbUser){
     el.innerHTML = '☁️ Guardado en la nube como <b>'+(fbUser.email||'cuenta de Google')+'</b> '+cloudState+' <button id="logoutBtn">salir</button>';
     $('logoutBtn').onclick = async ()=>{
-      await pushCloud();      // subir lo último antes de salir
-      clearSave();            // esta partida vive en la nube, no en el dispositivo
+      const subido = await pushCloud();   // subir lo último antes de salir
+      if(subido) clearSave();             // solo borrar lo local si la nube lo tiene
+      // si falló la subida, lo local se conserva (con uid) y se fusionará al volver a entrar
       firebase.auth().signOut().then(()=>location.reload());
     };
   } else {
@@ -651,18 +653,27 @@ function scheduleCloudSave(){
   cloudTimer = setTimeout(pushCloud, 1500);
 }
 async function pushCloud(){
-  if(!CLOUD || !fbUser) return;
+  if(!CLOUD || !fbUser) return false;
   try{
+    // Firestore no acepta arrays anidados (el mazo): se guarda como JSON string
     await firebase.firestore().collection('saves').doc(fbUser.uid)
-      .set({ data: buildSave(), updatedAt: Date.now() });
+      .set({ data: JSON.stringify(buildSave()), updatedAt: Date.now() });
     cloudState = '✓'; sessionUI();
-  }catch(e){ cloudState = '(sin conexión)'; sessionUI(); }
+    return true;
+  }catch(e){
+    console.error('pushCloud:', e);
+    cloudState = '⚠ sin sincronizar'; sessionUI();
+    return false;
+  }
 }
 async function pullCloud(uid){
   try{
     const snap = await firebase.firestore().collection('saves').doc(uid).get();
-    return snap.exists && validSave(snap.data().data) ? snap.data().data : null;
-  }catch(e){ return null; }
+    if(!snap.exists) return null;
+    const raw = snap.data().data;
+    const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    return validSave(d) ? d : null;
+  }catch(e){ console.error('pullCloud:', e); return null; }
 }
 function bestSave(cloud, local, uid){
   // la nube manda; lo local solo gana si es del MISMO usuario y va más adelantado (juego offline)
@@ -674,21 +685,37 @@ function bestSave(cloud, local, uid){
 }
 
 /* ============ FLUJO DEL JUEGO ============ */
-const PROMPTS = {kanji:'¿Qué significa este kanji?', vocab:'¿Qué significa esta palabra?', grammar:'¿Qué hace en: '};
+const PROMPTS = {kanji:'¿Qué significa este kanji?', vocab:'¿Qué significa esta palabra?'};
+let facets = ['meaning'], facetIdx = 0, cardOK = true;
+
+function facetsFor(card){
+  // kanji y vocabulario con lectura: se pregunta significado Y lectura
+  return (card.type!=='grammar' && card.reading) ? ['meaning','reading'] : ['meaning'];
+}
 
 function dealCard(){
   current = pickCard();
-  locked = false;
   current.seen = true;
-  $('cardTipo').textContent = current.type==='kanji'?'KANJI':current.type==='vocab'?'VOCABULARIO':'GRAMÁTICA';
+  facets = facetsFor(current);
+  facetIdx = 0;
+  cardOK = true;
+  renderFacet();
+}
+
+function renderFacet(){
+  locked = false;
+  const facet = facets[facetIdx];
+  const tipo = current.type==='kanji'?'KANJI':current.type==='vocab'?'VOCABULARIO':'GRAMÁTICA';
+  $('cardTipo').textContent = tipo + (facets.length>1 ? (facet==='meaning' ? ' · 1/2 SIGNIFICADO' : ' · 2/2 LECTURA') : '');
   $('cardPrompt').textContent = current.type==='grammar'
-    ? '¿Qué hace en: 「'+current.reading+'」?' : PROMPTS[current.type];
+    ? '¿Qué hace en: 「'+current.reading+'」?'
+    : (facet==='reading' ? '¿Cómo se lee?' : PROMPTS[current.type]);
   $('cardFront').textContent = current.front;
   $('cardReading').textContent = '';
   $('feedback').innerHTML = '';
   $('nextBtn').style.display = 'none';
   const opts = $('opts'); opts.innerHTML = '';
-  for(const o of optionsFor(current)){
+  for(const o of optionsFor(current, facet)){
     const b = document.createElement('button');
     b.textContent = o;
     b.onclick = ()=>answer(b, o);
@@ -699,18 +726,19 @@ function dealCard(){
 function answer(btn, choice){
   if(locked) return; locked = true;
   reviews++;
-  const ok = choice===current.answer;
+  const facet = facets[facetIdx];
+  const correcta = facet==='reading' ? current.reading : current.answer;
+  const ok = choice===correcta;
+  const last = facetIdx===facets.length-1;
   [...$('opts').children].forEach(b=>{
     b.disabled = true;
-    if(b.textContent===current.answer) b.classList.add('ok');
+    if(b.textContent===correcta) b.classList.add('ok');
     else if(b===btn && !ok) b.classList.add('mal');
   });
-  if(current.type!=='grammar' && current.reading) $('cardReading').textContent = '📖 '+current.reading;
+  if(!ok) cardOK = false;
 
-  const wasMastered = current.box>=MASTER_BOX;
   if(ok){
     correct++; combo++; bestCombo=Math.max(bestCombo,combo);
-    current.box = Math.min(MAX_BOX, current.box+1);
     charm = Math.min(100, charm + 4 + (combo>=5?2:0));
     $('feedback').innerHTML = '✅ ¡Correcto!' + (combo>=3?' <span class="combo">Racha x'+combo+' 🔥</span>':'');
     $('idolBox').classList.remove('shake'); void $('idolBox').offsetWidth;
@@ -718,26 +746,39 @@ function answer(btn, choice){
     setTimeout(()=>$('idolBox').classList.remove('happy-bounce'), 1200);
   } else {
     combo = 0;
-    current.box = 0;
     charm = Math.max(0, charm - 8);
-    $('feedback').innerHTML = '❌ Era: <b>'+current.answer+'</b><div class="info">Esta carta volverá pronto. ¡El SRS no perdona!</div>';
+    $('feedback').innerHTML = '❌ Era: <b>'+correcta+'</b>';
     $('playerBox').classList.remove('happy-bounce'); void $('playerBox').offsetWidth;
     $('playerBox').classList.add('shake');
     setTimeout(()=>$('playerBox').classList.remove('shake'), 700);
   }
-  current.due = reviews + INTERVALS[current.box];
 
-  // diálogo
-  const nowMastered = current.box>=MASTER_BOX;
   const ei = estadoIdx();
-  if(ok && !wasMastered && nowMastered) say(pick(LINES.master));
-  else if(ok) say(pick(ei<=1 ? LINES.correctA : LINES.correctB));
-  else say(pick(ei>=3 ? LINES.wrongB : LINES.wrongA));
+  if(last){
+    // la carta sube de caja SOLO si significado y lectura salieron bien
+    const wasMastered = current.box>=MASTER_BOX;
+    current.box = cardOK ? Math.min(MAX_BOX, current.box+1) : 0;
+    current.due = reviews + INTERVALS[current.box];
+    if(current.type!=='grammar' && current.reading) $('cardReading').textContent = '📖 '+current.reading;
+    if(!cardOK){
+      $('feedback').innerHTML += '<div class="info">' +
+        (facets.length>1 ? 'Para dominarla necesitas significado Y lectura. ' : '') +
+        'Esta carta volverá pronto. ¡El SRS no perdona!</div>';
+    }
+    const nowMastered = current.box>=MASTER_BOX;
+    if(cardOK && !wasMastered && nowMastered) say(pick(LINES.master));
+    else if(ok) say(pick(ei<=1 ? LINES.correctA : LINES.correctB));
+    else say(pick(ei>=3 ? LINES.wrongB : LINES.wrongA));
+  } else {
+    if(ok) say(pick(ei<=1 ? LINES.correctA : LINES.correctB));
+    else say(pick(ei>=3 ? LINES.wrongB : LINES.wrongA));
+  }
   if(ei<lastEstado && ei<=1 && lastEstado>=3) say(LINES.comeback);
   lastEstado = ei;
 
   renderPlayer(); renderIdol(); renderStats();
   saveGame();
+  $('nextBtn').textContent = last ? 'Siguiente →' : 'Siguiente pregunta →';
   $('nextBtn').style.display = 'inline-block';
   $('nextBtn').focus();
 }
@@ -758,10 +799,13 @@ function renderStats(){
   $('hearts').title = 'Cariño: '+Math.round(score)+'/100 — sube con tu encanto y con cartas dominadas';
 }
 
-document.getElementById('nextBtn').onclick = dealCard;
+document.getElementById('nextBtn').onclick = ()=>{
+  if(facetIdx < facets.length-1){ facetIdx++; renderFacet(); }
+  else dealCard();
+};
 document.addEventListener('keydown', e=>{
   if($('welcome').style.display==='flex') return;
-  if(e.key==='Enter' && $('nextBtn').style.display!=='none') dealCard();
+  if(e.key==='Enter' && $('nextBtn').style.display!=='none') $('nextBtn').click();
   const n = parseInt(e.key);
   if(n>=1 && n<=4 && !locked){
     const b = $('opts').children[n-1];
