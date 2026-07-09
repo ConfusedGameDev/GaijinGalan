@@ -115,6 +115,8 @@
     padding:11px 12px; font-size:.95rem; font-weight:700; cursor:pointer;}
   .gbtn:hover{filter:brightness(.93);}
   .gbtn.small{width:auto; padding:11px 16px;}
+  .gbtn.ghost{background:#3a2a58; color:var(--text);}
+  .gbtn.ghost:hover{background:#4a3670; filter:none;}
   .wor{font-size:.72rem; color:var(--muted); margin:10px 0 6px;}
   .erow{display:flex; gap:8px;}
   .erow input{flex:1; background:#150c22; border:2px solid #3a2a58; border-radius:10px;
@@ -372,27 +374,30 @@
   <div class="wpanel">
     <h2>GAIJIN <span class="jp">GALÁN</span> 💘</h2>
     <div class="wsub">Un gaijin, una idol, y todo el japonés que tendrás que aprender para impresionarla.</div>
-    <div id="authBox">
+    <div id="authStep">
       <button id="btnGoogle" class="gbtn">Continuar con Google</button>
       <div class="wor">o por email (enlace mágico)</div>
       <div class="erow">
         <input id="emailInput" type="email" placeholder="tu@email.com" autocomplete="email">
         <button id="btnEmail" class="gbtn small">Enviar</button>
       </div>
-      <div class="wor">— o juega solo en este dispositivo —</div>
+      <div class="wor">— o —</div>
+      <button id="btnLocal" class="gbtn ghost">Jugar sin cuenta (solo este dispositivo)</button>
     </div>
-    <label class="wlabel" for="nameInput">Tu nombre</label>
-    <input id="nameInput" maxlength="16" placeholder="Gaijin-kun" autocomplete="off">
-    <label class="wlabel">Nivel JLPT</label>
-    <div class="levels">
-      <button class="lvl sel" id="lvlN5">N5</button>
-      <button class="lvl lock" disabled>N4 🔒</button>
-      <button class="lvl lock" disabled>N3 🔒</button>
-      <button class="lvl lock" disabled>N2 🔒</button>
-      <button class="lvl lock" disabled>N1 🔒</button>
+    <div id="profileStep" style="display:none">
+      <label class="wlabel" for="nameInput">Tu nombre</label>
+      <input id="nameInput" maxlength="16" placeholder="Gaijin-kun" autocomplete="off">
+      <label class="wlabel">Nivel JLPT</label>
+      <div class="levels">
+        <button class="lvl sel" id="lvlN5">N5</button>
+        <button class="lvl lock" disabled>N4 🔒</button>
+        <button class="lvl lock" disabled>N3 🔒</button>
+        <button class="lvl lock" disabled>N2 🔒</button>
+        <button class="lvl lock" disabled>N1 🔒</button>
+      </div>
+      <div class="wsmall">Domina el mazo N5 para desbloquear el siguiente nivel</div>
+      <button id="startBtn" class="next-btn" style="display:inline-block">¡Empezar! →</button>
     </div>
-    <div class="wsmall">Domina el mazo N5 para desbloquear el siguiente nivel</div>
-    <button id="startBtn" class="next-btn" style="display:inline-block">¡Empezar! →</button>
   </div>
 </div>
 
@@ -583,6 +588,7 @@ let playerName = 'Gaijin', level = 'N5';
 
 function buildSave(){
   return { name: playerName, level, charm, reviews, correct, bestCombo, lastEstado,
+    uid: (typeof fbUser!=='undefined' && fbUser) ? fbUser.uid : null,
     deck: DECK.map(c=>[c.box, c.due, c.seen?1:0]) };
 }
 function validSave(d){ return d && Array.isArray(d.deck) && d.deck.length === DECK.length; }
@@ -629,9 +635,14 @@ function sessionUI(){
   if(!CLOUD){ el.textContent = ''; return; }
   if(fbUser){
     el.innerHTML = '☁️ Guardado en la nube como <b>'+(fbUser.email||'cuenta de Google')+'</b> '+cloudState+' <button id="logoutBtn">salir</button>';
-    $('logoutBtn').onclick = ()=> firebase.auth().signOut().then(()=>location.reload());
+    $('logoutBtn').onclick = async ()=>{
+      await pushCloud();      // subir lo último antes de salir
+      clearSave();            // esta partida vive en la nube, no en el dispositivo
+      firebase.auth().signOut().then(()=>location.reload());
+    };
   } else {
-    el.textContent = '☁️ Sin sesión: el progreso vive solo en este navegador.';
+    el.innerHTML = '☁️ Sin sesión: el progreso vive solo en este navegador. <button id="loginBtn">iniciar sesión</button>';
+    $('loginBtn').onclick = ()=> showStep('auth');
   }
 }
 function scheduleCloudSave(){
@@ -653,10 +664,13 @@ async function pullCloud(uid){
     return snap.exists && validSave(snap.data().data) ? snap.data().data : null;
   }catch(e){ return null; }
 }
-function bestSave(cloud, local){
-  if(!cloud) return local;
-  if(!local) return cloud;
-  return (cloud.reviews||0) >= (local.reviews||0) ? cloud : local;
+function bestSave(cloud, local, uid){
+  // la nube manda; lo local solo gana si es del MISMO usuario y va más adelantado (juego offline)
+  if(cloud && local && local.uid === uid)
+    return (local.reviews||0) > (cloud.reviews||0) ? local : cloud;
+  if(cloud) return cloud;
+  // sin nube: adoptar lo local solo si es anónimo o del mismo usuario
+  return (local && (!local.uid || local.uid === uid)) ? local : null;
 }
 
 /* ============ FLUJO DEL JUEGO ============ */
@@ -756,7 +770,9 @@ document.addEventListener('keydown', e=>{
 });
 
 /* ============ INICIO ============ */
+let gameStarted = false;
 function startGame(returning){
+  gameStarted = true;
   $('playerName').textContent = playerName;
   $('stLevel').textContent = level;
   renderPlayer(); renderIdol(); renderStats(); dealCard();
@@ -783,15 +799,26 @@ $('resetBtn').onclick = async ()=>{
   }
 };
 
+/* pasos de la bienvenida */
+function showStep(step){
+  $('welcome').style.display = 'flex';
+  $('authStep').style.display = step==='auth' ? '' : 'none';
+  $('profileStep').style.display = step==='profile' ? '' : 'none';
+  if(step==='profile') setTimeout(()=>$('nameInput').focus(), 100);
+}
+$('btnLocal').onclick = ()=>{
+  if(gameStarted) $('welcome').style.display = 'none';   // volver al juego
+  else showStep('profile');
+};
+
 /* arranque local inmediato (funciona offline y sin Firebase configurado) */
 const _save = loadGame();
 if(_save){
   applySaveData(_save);
   startGame(true);
 } else {
-  $('welcome').style.display = 'flex';
   renderPlayer(); renderIdol(); renderStats();
-  setTimeout(()=>$('nameInput').focus(), 100);
+  showStep(CLOUD ? 'auth' : 'profile');
 }
 
 /* capa de nube */
@@ -810,15 +837,19 @@ if(CLOUD){
     fbUser = user;
     sessionUI();
     if(!user) return;
-    const mejor = bestSave(await pullCloud(user.uid), loadGame());
+    const mejor = bestSave(await pullCloud(user.uid), loadGame(), user.uid);
     if(mejor){
+      mejor.uid = user.uid;
       applySaveData(mejor);
       try{ localStorage.setItem(SAVE_KEY, JSON.stringify(mejor)); }catch(e){}
       $('welcome').style.display = 'none';
       startGame(true);
       pushCloud();
-    } else if(user.displayName && !$('nameInput').value){
-      $('nameInput').value = user.displayName.split(' ')[0];
+    } else {
+      // cuenta nueva: pasar a elegir nombre y nivel
+      if(user.displayName && !$('nameInput').value)
+        $('nameInput').value = user.displayName.split(' ')[0];
+      showStep('profile');
     }
   });
 
