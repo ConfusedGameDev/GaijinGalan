@@ -111,6 +111,15 @@
   .lvl.sel{background:#4a1e33; border-color:var(--accent); color:#ffb3c8;}
   .lvl.lock{opacity:.35; cursor:not-allowed; font-size:.8rem;}
   .wsmall{font-size:.72rem; color:var(--muted); margin-top:8px;}
+  .gbtn{width:100%; background:#fff; color:#2a2438; border:none; border-radius:10px;
+    padding:11px 12px; font-size:.95rem; font-weight:700; cursor:pointer;}
+  .gbtn:hover{filter:brightness(.93);}
+  .gbtn.small{width:auto; padding:11px 16px;}
+  .wor{font-size:.72rem; color:var(--muted); margin:10px 0 6px;}
+  .erow{display:flex; gap:8px;}
+  .erow input{flex:1; background:#150c22; border:2px solid #3a2a58; border-radius:10px;
+    color:var(--text); padding:10px 12px; font-size:.9rem;}
+  .erow input:focus{outline:none; border-color:var(--accent);}
 </style>
 </head>
 <body>
@@ -355,13 +364,23 @@
     <span>Aciertos: <b id="stAcc">–</b></span>
     <span>Repasos: <b id="stReviews">0</b></span>
   </div>
-  <div class="note">Sistema de repetición espaciada: las cartas falladas vuelven pronto; las dominadas, cada vez más tarde. Tu progreso se guarda solo en este navegador. <button id="resetBtn">reiniciar progreso</button></div>
+  <div class="note">Sistema de repetición espaciada: las cartas falladas vuelven pronto; las dominadas, cada vez más tarde. <button id="resetBtn">reiniciar progreso</button></div>
+  <div class="note" id="sessionInfo"></div>
 </div>
 
 <div class="overlay" id="welcome">
   <div class="wpanel">
     <h2>GAIJIN <span class="jp">GALÁN</span> 💘</h2>
     <div class="wsub">Un gaijin, una idol, y todo el japonés que tendrás que aprender para impresionarla.</div>
+    <div id="authBox">
+      <button id="btnGoogle" class="gbtn">Continuar con Google</button>
+      <div class="wor">o por email (enlace mágico)</div>
+      <div class="erow">
+        <input id="emailInput" type="email" placeholder="tu@email.com" autocomplete="email">
+        <button id="btnEmail" class="gbtn small">Enviar</button>
+      </div>
+      <div class="wor">— o juega solo en este dispositivo —</div>
+    </div>
     <label class="wlabel" for="nameInput">Tu nombre</label>
     <input id="nameInput" maxlength="16" placeholder="Gaijin-kun" autocomplete="off">
     <label class="wlabel">Nivel JLPT</label>
@@ -377,6 +396,9 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 'use strict';
 /* ============ CONTENIDO N5 ============ */
@@ -559,22 +581,83 @@ function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 const SAVE_KEY = 'gaijinGalanSave_v1';
 let playerName = 'Gaijin', level = 'N5';
 
+function buildSave(){
+  return { name: playerName, level, charm, reviews, correct, bestCombo, lastEstado,
+    deck: DECK.map(c=>[c.box, c.due, c.seen?1:0]) };
+}
+function validSave(d){ return d && Array.isArray(d.deck) && d.deck.length === DECK.length; }
 function saveGame(){
-  try{
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      name: playerName, level, charm, reviews, correct, bestCombo, lastEstado,
-      deck: DECK.map(c=>[c.box, c.due, c.seen?1:0])
-    }));
-  }catch(e){ /* modo privado o storage bloqueado: se juega sin guardar */ }
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); }catch(e){}
+  scheduleCloudSave();
 }
 function loadGame(){
   try{
     const d = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if(!d || !Array.isArray(d.deck) || d.deck.length !== DECK.length) return null;
-    return d;
+    return validSave(d) ? d : null;
   }catch(e){ return null; }
 }
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+function applySaveData(s){
+  playerName = s.name || 'Gaijin';
+  level = s.level || 'N5';
+  charm = typeof s.charm==='number' ? s.charm : 50;
+  reviews = s.reviews || 0;
+  correct = s.correct || 0;
+  bestCombo = s.bestCombo || 0;
+  lastEstado = typeof s.lastEstado==='number' ? s.lastEstado : 2;
+  s.deck.forEach((d,i)=>{ if(DECK[i]){ DECK[i].box=d[0]; DECK[i].due=d[1]; DECK[i].seen=!!d[2]; } });
+}
+
+/* ============ NUBE (Firebase) ============ */
+/* 1) Crea un proyecto en console.firebase.google.com
+   2) Activa Authentication (Google + Email link) y Firestore
+   3) Pega aquí tu config (Project settings → Your apps → Web app)   */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyB80u0UGJKwE0uBLlppr5u4iDg4X4hndJg",
+  authDomain: "gaijin-galan.firebaseapp.com",
+  projectId: "gaijin-galan",
+  storageBucket: "gaijin-galan.firebasestorage.app",
+  messagingSenderId: "398416563030",
+  appId: "1:398416563030:web:2ee64b2eab66828c9664f7",
+  measurementId: "G-MQZLGPZZ17"
+};
+const CLOUD = typeof firebase !== 'undefined' && FIREBASE_CONFIG.apiKey !== 'PEGA_AQUI';
+let fbUser = null, cloudTimer = null, cloudState = '';
+
+function sessionUI(){
+  const el = $('sessionInfo');
+  if(!CLOUD){ el.textContent = ''; return; }
+  if(fbUser){
+    el.innerHTML = '☁️ Guardado en la nube como <b>'+(fbUser.email||'cuenta de Google')+'</b> '+cloudState+' <button id="logoutBtn">salir</button>';
+    $('logoutBtn').onclick = ()=> firebase.auth().signOut().then(()=>location.reload());
+  } else {
+    el.textContent = '☁️ Sin sesión: el progreso vive solo en este navegador.';
+  }
+}
+function scheduleCloudSave(){
+  if(!CLOUD || !fbUser) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(pushCloud, 1500);
+}
+async function pushCloud(){
+  if(!CLOUD || !fbUser) return;
+  try{
+    await firebase.firestore().collection('saves').doc(fbUser.uid)
+      .set({ data: buildSave(), updatedAt: Date.now() });
+    cloudState = '✓'; sessionUI();
+  }catch(e){ cloudState = '(sin conexión)'; sessionUI(); }
+}
+async function pullCloud(uid){
+  try{
+    const snap = await firebase.firestore().collection('saves').doc(uid).get();
+    return snap.exists && validSave(snap.data().data) ? snap.data().data : null;
+  }catch(e){ return null; }
+}
+function bestSave(cloud, local){
+  if(!cloud) return local;
+  if(!local) return cloud;
+  return (cloud.reviews||0) >= (local.reviews||0) ? cloud : local;
+}
 
 /* ============ FLUJO DEL JUEGO ============ */
 const PROMPTS = {kanji:'¿Qué significa este kanji?', vocab:'¿Qué significa esta palabra?', grammar:'¿Qué hace en: '};
@@ -690,28 +773,74 @@ $('startBtn').onclick = ()=>{
   startGame(false);
 };
 $('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('startBtn').click(); });
-$('resetBtn').onclick = ()=>{
+$('resetBtn').onclick = async ()=>{
   if(confirm('¿Borrar todo tu progreso? Hikari te olvidará por completo.')){
-    clearSave(); location.reload();
+    clearSave();
+    if(CLOUD && fbUser){
+      try{ await firebase.firestore().collection('saves').doc(fbUser.uid).delete(); }catch(e){}
+    }
+    location.reload();
   }
 };
 
+/* arranque local inmediato (funciona offline y sin Firebase configurado) */
 const _save = loadGame();
 if(_save){
-  playerName = _save.name || 'Gaijin';
-  level = _save.level || 'N5';
-  charm = typeof _save.charm==='number' ? _save.charm : 50;
-  reviews = _save.reviews || 0;
-  correct = _save.correct || 0;
-  bestCombo = _save.bestCombo || 0;
-  lastEstado = typeof _save.lastEstado==='number' ? _save.lastEstado : 2;
-  _save.deck.forEach((d,i)=>{ DECK[i].box=d[0]; DECK[i].due=d[1]; DECK[i].seen=!!d[2]; });
+  applySaveData(_save);
   startGame(true);
 } else {
   $('welcome').style.display = 'flex';
   renderPlayer(); renderIdol(); renderStats();
   setTimeout(()=>$('nameInput').focus(), 100);
 }
+
+/* capa de nube */
+if(CLOUD){
+  firebase.initializeApp(FIREBASE_CONFIG);
+
+  // completar inicio de sesión por enlace mágico
+  if(firebase.auth().isSignInWithEmailLink(location.href)){
+    const em = localStorage.getItem('ggEmail') || prompt('Confirma tu email para entrar:');
+    if(em) firebase.auth().signInWithEmailLink(em, location.href)
+      .then(()=>{ localStorage.removeItem('ggEmail'); history.replaceState(null,'',location.pathname); })
+      .catch(e=>alert('No se pudo iniciar sesión: '+e.message));
+  }
+
+  firebase.auth().onAuthStateChanged(async user=>{
+    fbUser = user;
+    sessionUI();
+    if(!user) return;
+    const mejor = bestSave(await pullCloud(user.uid), loadGame());
+    if(mejor){
+      applySaveData(mejor);
+      try{ localStorage.setItem(SAVE_KEY, JSON.stringify(mejor)); }catch(e){}
+      $('welcome').style.display = 'none';
+      startGame(true);
+      pushCloud();
+    } else if(user.displayName && !$('nameInput').value){
+      $('nameInput').value = user.displayName.split(' ')[0];
+    }
+  });
+
+  $('btnGoogle').onclick = ()=>
+    firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider())
+      .catch(e=>alert('Error: '+e.message));
+
+  $('btnEmail').onclick = ()=>{
+    const em = $('emailInput').value.trim();
+    if(!em) return alert('Escribe tu email primero');
+    localStorage.setItem('ggEmail', em);
+    firebase.auth().sendSignInLinkToEmail(em, { url: location.href, handleCodeInApp: true })
+      .then(()=>alert('📧 Enlace enviado a '+em+'. Ábrelo en el dispositivo donde quieras jugar.'))
+      .catch(e=>alert('Error: '+e.message));
+  };
+} else {
+  $('authBox').style.display = 'none';
+  sessionUI();
+}
+
+/* guardar antes de cerrar la pestaña */
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') pushCloud(); });
 </script>
 </body>
 </html>
