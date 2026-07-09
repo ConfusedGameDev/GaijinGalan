@@ -370,7 +370,7 @@
   </div>
 
   <div class="stats">
-    <span>Nivel: <b id="stLevel">N5</b></span>
+    <span id="levelChip" style="cursor:pointer" title="Cambiar de nivel">Nivel: <b id="stLevel">N5</b> ▾</span>
     <span>Racha: <b class="combo" id="combo">0🔥</b></span>
     <span>Vistas: <b id="stSeen">0</b>/<b id="stTotal">0</b></span>
     <span>Dominadas: <b id="stMastered">0</b></span>
@@ -429,55 +429,143 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 'use strict';
-/* ============ CONTENIDO N5 ============ */
-const KANJI = [
-  ['日','にち・ひ','día / sol'],['月','げつ・つき','luna / mes'],['火','か・ひ','fuego'],
-  ['水','すい・みず','agua'],['木','もく・き','árbol'],['金','きん・かね','oro / dinero'],
-  ['土','ど・つち','tierra'],['山','さん・やま','montaña'],['川','せん・かわ','río'],
-  ['人','じん・ひと','persona'],['口','こう・くち','boca'],['目','もく・め','ojo'],
-  ['手','しゅ・て','mano'],['足','そく・あし','pie / pierna'],['心','しん・こころ','corazón'],
-  ['大','だい・おお','grande'],['小','しょう・ちい','pequeño'],['中','ちゅう・なか','medio / dentro'],
-  ['上','じょう・うえ','arriba'],['下','か・した','abajo'],['左','さ・ひだり','izquierda'],
-  ['右','う・みぎ','derecha'],['前','ぜん・まえ','delante / antes'],['後','ご・あと','detrás / después'],
-  ['男','だん・おとこ','hombre'],['女','じょ・おんな','mujer'],['子','し・こ','niño / hijo'],
-  ['学','がく','estudio / aprender'],['校','こう','escuela (edificio)'],['先','せん・さき','previo / delante'],
-  ['生','せい・い','vida / nacer'],['年','ねん・とし','año'],['時','じ・とき','hora / tiempo'],
-  ['分','ふん・わ','minuto / dividir'],['今','こん・いま','ahora'],['何','なに','qué'],
-  ['本','ほん','libro / origen'],['語','ご','idioma / palabra'],['食','しょく・た','comer'],
-  ['飲','いん・の','beber'],
-].map(([f,r,a])=>({type:'kanji', front:f, reading:r, answer:a}));
+/* ============ CONTENIDO POR NIVEL (kanji según listas JLPT de Kanshudo) ============ */
+const LEVELS = {
+  N5: { ready:true,
+    kanji: [
+      ['人','じん・ひと','persona'],['一','いち','uno'],['日','にち・ひ','día / sol'],['大','だい・おお','grande'],
+      ['年','ねん・とし','año'],['出','しゅつ・で','salir'],['本','ほん','libro / origen'],['中','ちゅう・なか','medio / dentro'],
+      ['子','し・こ','niño / hijo'],['見','けん・み','ver'],['国','こく・くに','país'],['上','じょう・うえ','arriba'],
+      ['分','ふん・わ','minuto / dividir'],['生','せい・い','vida / nacer'],['行','こう・い','ir'],['二','に','dos'],
+      ['間','かん・あいだ','intervalo / entre'],['時','じ・とき','hora / tiempo'],['気','き','espíritu / energía'],['十','じゅう','diez'],
+      ['女','じょ・おんな','mujer'],['三','さん','tres'],['前','ぜん・まえ','delante / antes'],['入','にゅう・はい','entrar'],
+      ['小','しょう・ちい','pequeño'],['後','ご・あと','detrás / después'],['長','ちょう・なが','largo / jefe'],['下','か・した','abajo'],
+      ['学','がく','estudio / aprender'],['月','げつ・つき','luna / mes'],['何','なに','qué'],['来','らい・く','venir'],
+      ['話','わ・はなし','hablar / conversación'],['山','さん・やま','montaña'],['高','こう・たか','alto / caro'],['今','こん・いま','ahora'],
+      ['書','しょ・か','escribir'],['五','ご','cinco'],['名','めい・な','nombre'],['金','きん・かね','oro / dinero'],
+      ['男','だん・おとこ','hombre'],['外','がい・そと','fuera / exterior'],['四','し・よん','cuatro'],['先','せん・さき','previo / delante'],
+      ['川','せん・かわ','río'],['東','とう・ひがし','este (dirección)'],['聞','ぶん・き','oír / preguntar'],['語','ご','idioma / palabra'],
+      ['九','きゅう','nueve'],['食','しょく・た','comer'],['八','はち','ocho'],['水','すい・みず','agua'],
+      ['天','てん','cielo'],['木','もく・き','árbol / madera'],['六','ろく','seis'],['万','まん','diez mil'],
+      ['白','はく・しろ','blanco'],['七','しち・なな','siete'],['円','えん','yen / círculo'],['電','でん','electricidad'],
+      ['父','ふ・ちち','padre'],['北','ほく・きた','norte'],['車','しゃ・くるま','coche / vehículo'],['母','ぼ・はは','madre'],
+      ['半','はん','mitad'],['百','ひゃく','cien'],['土','ど・つち','tierra'],['西','せい・にし','oeste'],
+      ['読','どく・よ','leer'],['千','せん','mil'],['校','こう','escuela (edificio)'],['右','う・みぎ','derecha'],
+      ['南','なん・みなみ','sur'],['左','さ・ひだり','izquierda'],['友','ゆう・とも','amigo'],['火','か・ひ','fuego'],
+      ['毎','まい','cada'],['雨','う・あめ','lluvia'],['休','きゅう・やす','descansar'],['午','ご','mediodía'],
+    ],
+    vocab: [
+      ['こんにちは','','hola / buenas tardes'],['ありがとう','','gracias'],['すみません','','disculpe / perdón'],
+      ['はい','','sí'],['いいえ','','no'],['私','わたし','yo'],['好き','すき','gustar / querer'],
+      ['猫','ねこ','gato'],['犬','いぬ','perro'],['ご飯','ごはん','arroz / comida'],
+      ['学校','がっこう','escuela'],['先生','せんせい','maestro / profesor'],['友達','ともだち','amigo'],
+      ['名前','なまえ','nombre'],['今日','きょう','hoy'],['明日','あした','mañana (día)'],
+      ['昨日','きのう','ayer'],['時間','じかん','tiempo / hora (duración)'],['電車','でんしゃ','tren'],
+      ['家','いえ','casa'],['大きい','おおきい','grande (adj.)'],['小さい','ちいさい','pequeño (adj.)'],
+      ['高い','たかい','alto / caro'],['安い','やすい','barato'],['新しい','あたらしい','nuevo'],
+      ['古い','ふるい','viejo (cosas)'],['可愛い','かわいい','lindo / tierno'],['綺麗','きれい','bonito / limpio'],
+      ['楽しい','たのしい','divertido'],['美味しい','おいしい','delicioso'],
+    ],
+    grammar: [
+      ['は','わたし＿がくせいです','marca el tema de la frase'],
+      ['が','ねこ＿います','marca el sujeto / lo nuevo'],
+      ['を','ごはん＿たべます','marca el objeto directo'],
+      ['に','がっこう＿いきます','marca destino / hora'],
+      ['で','いえ＿べんきょうします','marca lugar de la acción / medio'],
+      ['の','わたし＿ねこ','posesivo: "de" (mi gato)'],
+      ['です','がくせい＿','"ser/estar", forma cortés'],
+      ['〜ます','たべ＿','terminación cortés del verbo'],
+      ['か','がくせいです＿？','convierte la frase en pregunta'],
+      ['ね','かわいいです＿','busca acuerdo: "¿verdad?"'],
+      ['よ','おいしいです＿','énfasis: da información nueva'],
+      ['〜たい','たべ＿です','expresa "querer hacer algo"'],
+    ],
+  },
+};
 
-const VOCAB = [
-  ['こんにちは','','hola / buenas tardes'],['ありがとう','','gracias'],['すみません','','disculpe / perdón'],
-  ['はい','','sí'],['いいえ','','no'],['私','わたし','yo'],['好き','すき','gustar / querer'],
-  ['猫','ねこ','gato'],['犬','いぬ','perro'],['ご飯','ごはん','arroz / comida'],
-  ['学校','がっこう','escuela'],['先生','せんせい','maestro / profesor'],['友達','ともだち','amigo'],
-  ['名前','なまえ','nombre'],['今日','きょう','hoy'],['明日','あした','mañana (día)'],
-  ['昨日','きのう','ayer'],['時間','じかん','tiempo / hora (duración)'],['電車','でんしゃ','tren'],
-  ['家','いえ','casa'],['大きい','おおきい','grande (adj.)'],['小さい','ちいさい','pequeño (adj.)'],
-  ['高い','たかい','alto / caro'],['安い','やすい','barato'],['新しい','あたらしい','nuevo'],
-  ['古い','ふるい','viejo (cosas)'],['可愛い','かわいい','lindo / tierno'],['綺麗','きれい','bonito / limpio'],
-  ['楽しい','たのしい','divertido'],['美味しい','おいしい','delicioso'],
-].map(([f,r,a])=>({type:'vocab', front:f, reading:r, answer:a}));
+LEVELS.N4 = { ready:true,
+  kanji: [
+    ['言','げん・い','decir / palabra'],['手','しゅ・て','mano'],['自','じ・みずか','uno mismo'],['者','しゃ・もの','persona (que hace algo)'],
+    ['事','じ・こと','cosa / asunto'],['思','し・おも','pensar'],['会','かい・あ','reunirse / asociación'],['家','か・いえ','casa / familia'],
+    ['的','てき','objetivo / sufijo "-al"'],['方','ほう・かた','dirección / manera'],['地','ち・じ','tierra / terreno'],['目','もく・め','ojo'],
+    ['場','じょう・ば','lugar'],['代','だい・か','sustituir / generación'],['私','し・わたし','yo / privado'],['立','りつ・た','estar de pie'],
+    ['物','ぶつ・もの','cosa / objeto'],['田','でん・た','arrozal'],['体','たい・からだ','cuerpo'],['動','どう・うご','moverse'],
+    ['社','しゃ','empresa / santuario'],['知','ち・し','saber / conocer'],['理','り','razón / lógica'],['同','どう・おな','igual / mismo'],
+    ['心','しん・こころ','corazón / mente'],['発','はつ','emitir / partir'],['作','さく・つく','hacer / crear'],['新','しん・あたら','nuevo'],
+    ['世','せい・よ','mundo / generación'],['度','ど','vez / grado'],['明','めい・あか','claro / brillante'],['力','りょく・ちから','fuerza'],
+    ['意','い','intención / sentido'],['用','よう・もち','usar / uso'],['主','しゅ・ぬし','principal / dueño'],['通','つう・とお','pasar / atravesar'],
+    ['文','ぶん','texto / oración'],['屋','おく・や','tienda / techo'],['業','ぎょう','negocio / oficio'],['持','じ・も','tener / sostener'],
+    ['道','どう・みち','camino'],['身','しん・み','cuerpo / uno mismo'],['不','ふ','no / negación'],['口','こう・くち','boca'],
+    ['多','た・おお','mucho'],['野','や・の','campo / llanura'],['考','こう・かんが','pensar / considerar'],['開','かい・あ','abrir'],
+    ['教','きょう・おし','enseñar'],['近','きん・ちか','cerca'],['以','い','desde / mediante'],['問','もん・と','pregunta'],
+    ['正','せい・ただ','correcto'],['真','しん・ま','verdad / auténtico'],['味','み・あじ','sabor'],['界','かい','mundo / frontera'],
+    ['無','む・な','sin / no haber'],['少','しょう・すこ','poco'],['海','かい・うみ','mar'],['切','せつ・き','cortar'],
+    ['重','じゅう・おも','pesado / importante'],['集','しゅう・あつ','reunir'],['員','いん','miembro'],['公','こう','público'],
+    ['画','が・かく','dibujo / trazo'],['死','し','morir'],['安','あん・やす','barato / tranquilo'],['親','しん・おや','padres / íntimo'],
+    ['強','きょう・つよ','fuerte'],['使','し・つか','usar'],['朝','ちょう・あさ','mañana (a.m.)'],['題','だい','título / tema'],
+    ['仕','し・つか','servir / trabajo'],['京','きょう','capital'],['足','そく・あし','pie / pierna'],['品','ひん・しな','artículo / producto'],
+    ['着','ちゃく・き','llegar / vestirse'],['別','べつ・わか','separado / distinto'],['音','おん・おと','sonido'],['元','げん・もと','origen / anterior'],
+    ['特','とく','especial'],['風','ふう・かぜ','viento / estilo'],['夜','や・よる','noche'],['空','くう・そら','cielo / vacío'],
+    ['有','ゆう・あ','haber / tener'],['起','き・お','levantarse'],['運','うん・はこ','transportar / suerte'],['料','りょう','tarifa / material'],
+    ['楽','らく・たの','divertido / fácil'],['色','しょく・いろ','color'],['帰','き・かえ','volver'],['歩','ほ・ある','caminar'],
+    ['悪','あく・わる','malo'],['広','こう・ひろ','amplio'],['店','てん・みせ','tienda'],['町','ちょう・まち','pueblo / barrio'],
+    ['住','じゅう・す','vivir (residir)'],['売','ばい・う','vender'],['待','たい・ま','esperar'],['古','こ・ふる','viejo (cosas)'],
+    ['始','し・はじ','empezar'],['終','しゅう・お','terminar'],['計','けい・はか','medir / plan'],['院','いん','institución / hospital'],
+    ['送','そう・おく','enviar / despedir'],['族','ぞく','familia / tribu'],['映','えい・うつ','proyectar / reflejar'],['買','ばい・か','comprar'],
+    ['病','びょう・やまい','enfermedad'],['早','そう・はや','temprano / rápido'],['質','しつ','calidad / pregunta'],['台','だい','plataforma / contador'],
+    ['室','しつ','habitación'],['可','か','posible / aceptable'],['建','けん・た','construir'],['転','てん・ころ','rodar / girar'],
+    ['医','い','medicina / médico'],['止','し・と','detener'],['字','じ','carácter / letra'],['工','こう','construcción / industria'],
+    ['急','きゅう・いそ','urgente / apresurarse'],['図','ず・と','diagrama / plano'],['黒','こく・くろ','negro'],['花','か・はな','flor'],
+    ['英','えい','inglés / brillante'],['走','そう・はし','correr'],['青','せい・あお','azul'],['答','とう・こた','responder'],
+    ['紙','し・かみ','papel'],['歌','か・うた','canción / cantar'],['注','ちゅう・そそ','verter / atención'],['赤','せき・あか','rojo'],
+    ['春','しゅん・はる','primavera'],['館','かん','edificio / salón'],['旅','りょ・たび','viaje'],['験','けん','examen / prueba'],
+    ['写','しゃ・うつ','copiar / fotografiar'],['去','きょ・さ','irse / pasado'],['研','けん','investigar / pulir'],['飲','いん・の','beber'],
+    ['肉','にく','carne'],['服','ふく','ropa'],['銀','ぎん','plata'],['茶','ちゃ','té'],
+    ['究','きゅう','investigar a fondo'],['洋','よう','océano / occidental'],['兄','けい・あに','hermano mayor'],['秋','しゅう・あき','otoño'],
+    ['堂','どう','salón / templo'],['週','しゅう','semana'],['習','しゅう・なら','aprender / practicar'],['試','し・ため','probar / examen'],
+    ['夏','か・なつ','verano'],['弟','てい・おとうと','hermano menor'],['鳥','ちょう・とり','pájaro'],['犬','けん・いぬ','perro'],
+    ['夕','ゆう','tarde / atardecer'],['魚','ぎょ・さかな','pez / pescado'],['借','しゃく・か','pedir prestado'],['飯','はん・めし','arroz cocido / comida'],
+    ['駅','えき','estación (tren)'],['昼','ちゅう・ひる','mediodía / día'],['冬','とう・ふゆ','invierno'],['姉','し・あね','hermana mayor'],
+    ['曜','よう','día de la semana'],['漢','かん','China / kanji'],['牛','ぎゅう・うし','vaca'],['妹','まい・いもうと','hermana menor'],
+    ['貸','たい・か','prestar'],['勉','べん','esforzarse / estudiar'],
+  ],
+  vocab: [
+    ['会社','かいしゃ','empresa / compañía'],['電話','でんわ','teléfono'],['手紙','てがみ','carta'],
+    ['音楽','おんがく','música'],['映画','えいが','película'],['料理','りょうり','cocina / platillo'],
+    ['勉強','べんきょう','estudio'],['旅行','りょこう','viaje'],['病院','びょういん','hospital'],
+    ['質問','しつもん','pregunta'],['世界','せかい','mundo'],['天気','てんき','clima'],
+    ['部屋','へや','habitación'],['お金','おかね','dinero'],['仕事','しごと','trabajo'],
+    ['家族','かぞく','familia'],['朝ご飯','あさごはん','desayuno'],['買い物','かいもの','compras'],
+    ['自転車','じてんしゃ','bicicleta'],['図書館','としょかん','biblioteca'],
+  ],
+  grammar: [
+    ['〜ている','たべ＿','acción en progreso o estado'],
+    ['〜たことがある','日本へ行っ＿','experiencia: "alguna vez he…"'],
+    ['〜なければならない','勉強し＿','obligación: "tener que"'],
+    ['〜てもいい','帰っ＿ですか','permiso: "¿puedo…?"'],
+    ['〜てはいけない','ここで食べ＿','prohibición: "no se debe"'],
+    ['〜たり…たり','歌っ＿踊っ＿する','lista de acciones de ejemplo'],
+    ['〜と思う','雨だ＿','opinión: "creo que…"'],
+    ['〜つもり','行く＿です','intención de hacer algo'],
+    ['〜ながら','音楽を聞き＿食べる','dos acciones a la vez'],
+    ['〜そうだ','雨が降り＿','apariencia: "parece que…"'],
+    ['〜かもしれない','来ない＿','posibilidad: "puede que…"'],
+    ['〜より…のほうが','犬＿猫＿好き','comparación: "más que"'],
+  ],
+};
+/* Listas de referencia (mazos en preparación) — kanji por nivel según Kanshudo/JLPT */
+LEVELS.N3 = { ready:false, kanjiRef:'合部彼内実当戦性対関感定政取所現最化民相法全情向平成経信面連原顔機次数美回表声報要変神記和引治決太込受解市期様活頭組指説能葉流然初在調笑議直夫選権利制続石進伝加助点産務件命番落付得好違殺置返論際歳反形光首勝必係由愛都放確過約馬状想官交米配若資常果呼共残判役他術支両乗済供格打御断式師告深存争覚側飛参突容育構認位達守満消任居予路座客船追背観誰息失老良示号職王識警優投局難種念寄商害頼横増差苦収段俺渡与演備申例働景抜遠絶負福球酒君察望婚単押割限戻科求談降妻岡熱浮等末幸草越登類未規精抱労処退費非喜娘逃探犯薬園疑緒静具席速舞宿程倒寝宅絵破庭婦余訪冷暮腹危許似険財遊雑恐値暗積夢痛富刻鳴欲途曲耳完願罪陽亡散掛昨怒留礼列雪払給敗捕忘晴因折迎悲港責除困閉吸髪束眠易窓祖勤昔便適吹候怖辞否遅煙徒欠迷洗互才更歯盗慣晩箱到頂杯皆招寒恥疲貧猫誤努幾賛偶忙泳靴偉' };
+LEVELS.N2 = { ready:false, kanjiRef:'軍兵島村門戸武城総団線設勢党史営府巻介蔵造根寺査将改県泉像細谷奥再血算象清技州領橋芸型香量久境階区波移域周接鉄頃材個協各帯歴編裏比坂装省税競囲辺河極防低林導森丸胸陸療諸管仲革担効賞星復片並底温軽録腰著乱章殿布角仏永誌減略準委令刊焼里圧額印池臣庫農板恋羽専逆腕短普岩竹児毛版宇況被岸超豊含植補暴課跡触玉震億肩劇刺述輪浅純薄阪韓固巨講般湯捨衣替央骨齢照層弱築脳航快翌旧筆換群爆捜油叫伸承雲練紹包庁測占混倍乳荒詰栄床則禁順枚厚皮輸濃簡孫丈黄届絡採傾鼻宝患延律希甘湾沈販欧砂尊紅複泊荷枝依幼斬勇昇寿菜季液券祭袋燃毒札狙脇卒副敬針拝浴悩汚灯坊尻涙停了汗郵幅童虫埋舟闇棒貨肌臓塩均湖損膝辛双軒績干姓掘籍珍訓預署漁緑畳咲貿踊封兆柱駐祝炭柔雇乾鋭氷隅冊糸募硬塗憎泥脂粉詞筒掃塔賢拾麦刷卵械皿祈灰召溶磨粒喫机貯匹綿贈凍瓶帽涼秒湿蒸菓耕鉱膚胃挟郊銅鈍貝缶枯滴符畜軟濯隻伺沸曇肯燥零' };
+LEVELS.N1 = { ready:false, kanjiRef:'丁且丘丙串丹丼乏乙乞亀井亜享亭仁仙仮仰企伎伏伐伯伴但佐佳併侍価侮侯侵侶促俊俗保修俳俵俸倉倣倫倹偏健偵偽傍傑傘催傲債傷僅僕僚僧儀儒償充克免典兼冒冗冠冥冶凄准凝凡凶凸凹刀刃刈刑刹削剖剛剝剣剤剰創功劣励劾勃勅勘勧勲勾匂匠匿升卑卓博即却卸厄厘厳又及叔叙句叱司吉后吏吐吟呂呈呉呪咽哀哲哺唄唆唇唐唯唱唾啓善喉喚喝喩喪嗅嗣嘆嘱嘲器噴嚇囚圏坑坪垂垣執培基埼堀堅堆堕堤堪塀塁塊塑塚塞塡塾墓墜墨墳墾壁壇壊壌士壮壱奇奈奉奏契奔奨奪奮奴如妃妄妊妖妙妥妨妬姫姻姿威娠娯婆婿媒媛嫁嫉嫌嫡嬢孔孝孤宗宙宛宜宣宮宰宴宵寂密寛寡寧審寮寸射尉尋尚就尺尼尽尾尿屈展属履屯岐岬岳峠峡峰崇崎崖崩嵐巡巣巧己巾帆帝帥帳幕幣幹幻幽序庶康庸廃廉廊廷弁弄弊弐弓弔弥弦弧張弾彙彩彫彰影往征径徐従循微徳徴徹忌忍志応忠怠怨怪恒恣恨恩恭恵悔悟悠悦悼惑惜惧惨惰愁愉愚慄慈態慌慎慕慢慨慮慰慶憂憤憧憩憬憲憶憾懇懐懲懸我戒戚戯戴房扇扉扱扶批抄把抑抗択披抵抹抽拉拍拐拒拓拘拙拠拡括拭拳拶拷挑挙挨挫振挿捉捗据捻授掌排控推措掲描提揚握揮援揺搬搭携搾摂摘摩摯撃撤撮撲擁操擦擬攻故敏救敢整敵敷斉斎斑斗斜斤斥施旋旗既旦旨旬旺昆昧昭是晶暁暇暑暖暦暫曖曹曽朕朗朱朴朽杉条松析枕枠枢架柄某染柳柵柿栃栓株核栽桁桃案桑桜桟梅梗梨棄棋棚棟棺椅椎検楷楼概槽標模樹欄欺款歓殉殊殖殴殻毀氏氾汁汎江汰汽沃沖沙没沢沼沿泌泡泣泰洞津洪派浄浜浦浪浸涯淑淡淫添渇渉渋渓渦湧源溝溺滅滋滑滝滞漂漆漏漠漫漬漸潔潜潟潤潮潰澄激濁濫瀬災炉炊炎為烈焦煎煩煮熊熟爪爵爽牙牧牲犠狂狩独狭猛猟献猶猿獄獣獲玄率玩珠班琴瑠璃璧環璽瓦甚甲畏畑畔畝異畿疎疫疾症痕痘痢痩痴瘍癒癖皇盆益盛盟監盤盲盾眉看眺眼睡督睦瞬瞭瞳矛矢矯砕砲硝硫碁碑磁礁礎祉祥票禅禍秀秘租秩称稚稲稼稽稿穀穂穏穫穴窃窒窟窮窯竜端笛第筋策箇箋箸節範篤簿籠粋粗粘粛粧糖糧系糾紀紋納級紛素紡索紫累紳紺結絞統絹継維綱網綻緊締緩緯緻縁縄縛縦縫縮繁繊織繕繭繰罰罵罷羅羊羞羨義翁翻翼耐耗聖聴肖肘肝股肢肥肪肺胆胎胞胴脅脈脊脚脱腎腐腫腸腺膜膨膳臆臨臭至致臼興舌舎舗舶舷艇艦艶芋芝芯芳芽苗苛茂茎茨荘菊菌華萎葛葬蓄蓋蔑蔽薦薪薫藍藤藩藻虎虐虚虜虞虹蚊蚕蛇蛍蛮蜂蜜融衆街衛衝衡衰衷袖裁裂裕裸製裾褐褒襟襲覆覇視覧訂訃討託訟訳訴診証詐詔評詠詣詩詮該詳誇誉誓誕誘誠請諦諧諭諮諾謀謁謄謎謙謝謡謹譜譲護豆豚豪貌貞貢貪貫貴貼賀賂賃賄賊賓賜賠賦賭購赦赴趣距跳践踏踪蹴躍軌軸較載輝輩轄辣辱迅迫迭透逐逓逝逮逸遂遇遍遜遡遣遭遮遵遷遺避還那邦邪邸郎郡郭郷酌酎酔酢酪酬酵酷酸醒醜醸采釈釜釣鈴鉛鉢銃銘銭鋳鋼錠錦錬錮錯鍋鍛鍵鎌鎖鎮鏡鐘鑑閑閣閥閲闘阜阻附陛陣陥陪陰陳陵陶隆隊随隔隙障隠隣隷雄雅雌離雰雷需霊霜霧露韻響項須頑頒頓頬頻顎顕顧飢飼飽飾餅養餌餓駄駆駒騎騒騰驚骸髄鬱鬼魂魅魔鮮鯨鶏鶴鹿麓麗麺麻黙鼓' };
 
-const GRAMMAR = [
-  ['は','わたし＿がくせいです','marca el tema de la frase'],
-  ['が','ねこ＿います','marca el sujeto / lo nuevo'],
-  ['を','ごはん＿たべます','marca el objeto directo'],
-  ['に','がっこう＿いきます','marca destino / hora'],
-  ['で','いえ＿べんきょうします','marca lugar de la acción / medio'],
-  ['の','わたし＿ねこ','posesivo: "de" (mi gato)'],
-  ['です','がくせい＿','"ser/estar", forma cortés'],
-  ['〜ます','たべ＿','terminación cortés del verbo'],
-  ['か','がくせいです＿？','convierte la frase en pregunta'],
-  ['ね','かわいいです＿','busca acuerdo: "¿verdad?"'],
-  ['よ','おいしいです＿','énfasis: da información nueva'],
-  ['〜たい','たべ＿です','expresa "querer hacer algo"'],
-].map(([f,r,a])=>({type:'grammar', front:f, reading:r, answer:a}));
-
-const DECK = [...KANJI, ...VOCAB, ...GRAMMAR].map((c,i)=>({
-  ...c, id:i, box:0, due:0, seen:false
-}));
+function buildDeckFor(lv){
+  const L = LEVELS[lv];
+  if(!L || !L.ready) return [];
+  const mk = (arr,type)=>arr.map(([f,r,a])=>({type, front:f, reading:r, answer:a}));
+  return [...mk(L.kanji,'kanji'), ...mk(L.vocab,'vocab'), ...mk(L.grammar,'grammar')]
+    .map((c,i)=>({...c, id:i, key:c.type+'|'+c.front, box:0, due:0, seen:false}));
+}
+let DECK = buildDeckFor('N5');
 
 /* ============ SRS (Leitner) ============ */
 const INTERVALS = [0, 3, 8, 20, 50, 120]; // repasos de espera por caja
@@ -606,16 +694,34 @@ let lastEstado = 2;
 function say(txt){ $('bubble').textContent = txt; }
 function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-/* ============ GUARDADO ============ */
-const SAVE_KEY = 'gaijinGalanSave_v1';
+/* ============ GUARDADO (v2: progreso por nivel) ============ */
+const SAVE_KEY = 'gaijinGalanSave_v2';
 let playerName = 'Gaijin', level = 'N5';
+let savedDecks = {};   // { N5: { 'kanji|日': [box,due,seen], ... }, N4: {...} }
 
+function snapshotDeck(){
+  if(!DECK.length) return;
+  const m = {};
+  for(const c of DECK) m[c.key] = [c.box, c.due, c.seen?1:0];
+  savedDecks[level] = m;
+}
+function loadLevel(lv, persistCurrent){
+  if(persistCurrent !== false) snapshotDeck();
+  level = lv;
+  DECK = buildDeckFor(lv);
+  const st = savedDecks[lv] || {};
+  for(const c of DECK){
+    const v = st[c.key];
+    if(v){ c.box = v[0]; c.due = v[1]; c.seen = !!v[2]; }
+  }
+}
 function buildSave(){
+  snapshotDeck();
   return { name: playerName, level, charm, reviews, correct, bestCombo, lastEstado,
     uid: (typeof fbUser!=='undefined' && fbUser) ? fbUser.uid : null,
-    deck: DECK.map(c=>[c.box, c.due, c.seen?1:0]) };
+    decks: savedDecks };
 }
-function validSave(d){ return d && Array.isArray(d.deck) && d.deck.length === DECK.length; }
+function validSave(d){ return !!(d && d.decks && typeof d.decks === 'object'); }
 function saveGame(){
   try{ localStorage.setItem(SAVE_KEY, JSON.stringify(buildSave())); }catch(e){}
   scheduleCloudSave();
@@ -629,13 +735,14 @@ function loadGame(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
 function applySaveData(s){
   playerName = s.name || 'Gaijin';
-  level = s.level || 'N5';
   charm = typeof s.charm==='number' ? s.charm : 50;
   reviews = s.reviews || 0;
   correct = s.correct || 0;
   bestCombo = s.bestCombo || 0;
   lastEstado = typeof s.lastEstado==='number' ? s.lastEstado : 2;
-  s.deck.forEach((d,i)=>{ if(DECK[i]){ DECK[i].box=d[0]; DECK[i].due=d[1]; DECK[i].seen=!!d[2]; } });
+  savedDecks = s.decks || {};
+  const lv = (LEVELS[s.level] && LEVELS[s.level].ready) ? s.level : 'N5';
+  loadLevel(lv, false);
 }
 
 /* ============ NUBE (Firebase) ============ */
@@ -709,20 +816,25 @@ const STRIPE_LINKS = {
   ALL: 'https://buy.stripe.com/00w4gz1bb0jVgh13EL1Jm00',
 };
 let unlocks = [];
+let pendingLevel = 'N5';
 
 function refreshLevels(){
   document.querySelectorAll('#levelBtns .lvl').forEach(btn=>{
     const lv = btn.dataset.level;
-    if(lv === 'N5') return;
-    const owned = unlocks.includes(lv) || unlocks.includes('ALL');
+    const owned = lv==='N5' || unlocks.includes(lv) || unlocks.includes('ALL');
+    const ready = LEVELS[lv] && LEVELS[lv].ready;
     btn.disabled = false;
+    btn.classList.toggle('sel', lv === pendingLevel);
     btn.classList.toggle('lock', !owned);
-    btn.innerHTML = owned
-      ? lv + '<span class="price">✓ tuyo</span>'
-      : lv + ' 🔒<span class="price">$0.99</span>';
-    btn.onclick = ()=> owned
-      ? alert('El mazo '+lv+' llega muy pronto. ¡Gracias por apoyar el juego! 💘')
-      : buyLevel(lv);
+    const sub = lv==='N5' ? 'gratis' : !owned ? '$0.99' : ready ? '✓ tuyo' : 'muy pronto';
+    btn.innerHTML = lv + (owned ? '' : ' 🔒') + '<span class="price">'+sub+'</span>';
+    btn.onclick = ()=>{
+      if(!owned) return buyLevel(lv);
+      if(!ready) return alert('El mazo '+lv+' está en preparación — los '
+        + (LEVELS[lv].kanjiRef||'').length + ' kanji del nivel ya están seleccionados. ¡Llega muy pronto!');
+      pendingLevel = lv;
+      refreshLevels();
+    };
   });
   const all = unlocks.includes('ALL');
   $('buyAllBtn').style.display = all ? 'none' : '';
@@ -902,11 +1014,20 @@ function startGame(returning){
 }
 
 $('startBtn').onclick = ()=>{
+  const returning = gameStarted;
   playerName = $('nameInput').value.trim() || 'Gaijin';
-  level = 'N5';
   $('welcome').style.display = 'none';
+  if(pendingLevel !== level && LEVELS[pendingLevel] && LEVELS[pendingLevel].ready){
+    loadLevel(pendingLevel);
+  }
   saveGame();
-  startGame(false);
+  startGame(returning);
+};
+$('levelChip').onclick = ()=>{
+  pendingLevel = level;
+  $('nameInput').value = playerName;
+  refreshLevels();
+  showStep('profile');
 };
 $('nameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') $('startBtn').click(); });
 $('resetBtn').onclick = async ()=>{
