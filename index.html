@@ -109,7 +109,8 @@
   .lvl{background:#3a2a58; color:var(--text); border:2px solid transparent; border-radius:10px;
     padding:10px 0; font-size:.95rem; font-weight:700; cursor:pointer;}
   .lvl.sel{background:#4a1e33; border-color:var(--accent); color:#ffb3c8;}
-  .lvl.lock{opacity:.35; cursor:not-allowed; font-size:.8rem;}
+  .lvl.lock{opacity:.75; cursor:pointer; font-size:.8rem;}
+  .lvl.lock:hover{opacity:1; background:#4a3670; border-color:var(--gold);}
   .wsmall{font-size:.72rem; color:var(--muted); margin-top:8px;}
   .gbtn{width:100%; background:#fff; color:#2a2438; border:none; border-radius:10px;
     padding:11px 12px; font-size:.95rem; font-weight:700; cursor:pointer;}
@@ -411,11 +412,11 @@
       <input id="nameInput" maxlength="16" placeholder="Gaijin-kun" autocomplete="off">
       <label class="wlabel">Nivel JLPT</label>
       <div class="levels" id="levelBtns">
-        <button class="lvl sel" data-level="N5">N5<span class="price">gratis</span></button>
-        <button class="lvl lock" data-level="N4">N4 🔒<span class="price">$0.99</span></button>
-        <button class="lvl lock" data-level="N3">N3 🔒<span class="price">$0.99</span></button>
-        <button class="lvl lock" data-level="N2">N2 🔒<span class="price">$0.99</span></button>
-        <button class="lvl lock" data-level="N1">N1 🔒<span class="price">$0.99</span></button>
+        <button class="lvl sel" data-level="N5" type="button">N5<span class="price">gratis</span></button>
+        <button class="lvl lock" data-level="N4" type="button">N4 🔒<span class="price">$0.99</span></button>
+        <button class="lvl lock" data-level="N3" type="button">N3 🔒<span class="price">$0.99</span></button>
+        <button class="lvl lock" data-level="N2" type="button">N2 🔒<span class="price">$0.99</span></button>
+        <button class="lvl lock" data-level="N1" type="button">N1 🔒<span class="price">$0.99</span></button>
       </div>
       <button class="gbtn ghost" id="buyAllBtn" style="margin-top:10px">✨ Desbloquear todos los niveles · $3 USD</button>
       <div class="wsmall">N5 gratis para siempre · las compras quedan ligadas a tu cuenta</div>
