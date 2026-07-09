@@ -117,6 +117,17 @@
   .gbtn.small{width:auto; padding:11px 16px;}
   .gbtn.ghost{background:#3a2a58; color:var(--text);}
   .gbtn.ghost:hover{background:#4a3670; filter:none;}
+  .lvl .price{display:block; font-size:.6rem; font-weight:400; color:var(--muted); margin-top:2px;}
+  .lvl.sel .price{color:#ffb3c8;}
+  .kofi{color:var(--gold); text-decoration:none;}
+  .kofi:hover{text-decoration:underline;}
+  #fbBox{display:none; background:var(--panel2); border-radius:12px; padding:12px; margin-top:10px;}
+  #fbBox textarea{width:100%; min-height:80px; background:#150c22; border:2px solid #3a2a58;
+    border-radius:10px; color:var(--text); padding:10px 12px; font-size:.9rem; resize:vertical;
+    font-family:inherit;}
+  #fbBox textarea:focus{outline:none; border-color:var(--accent);}
+  .fbRow{display:flex; justify-content:space-between; align-items:center; margin-top:8px;}
+  .fbRow span{font-size:.78rem; color:var(--muted);}
   .wor{font-size:.72rem; color:var(--muted); margin:10px 0 6px;}
   .erow{display:flex; gap:8px;}
   .erow input{flex:1; background:#150c22; border:2px solid #3a2a58; border-radius:10px;
@@ -368,6 +379,17 @@
   </div>
   <div class="note">Sistema de repetición espaciada: las cartas falladas vuelven pronto; las dominadas, cada vez más tarde. <button id="resetBtn">reiniciar progreso</button></div>
   <div class="note" id="sessionInfo"></div>
+  <div class="note">
+    <a class="kofi" href="https://ko-fi.com/confusedgamedev" target="_blank" rel="noopener">☕ ¿Te sirve el juego? Invítame un café en Ko-fi</a>
+    · <button id="fbToggle">💬 Pedidos y sugerencias</button>
+  </div>
+  <div id="fbBox">
+    <textarea id="fbText" maxlength="1000" placeholder="¿Qué te gustaría ver en el juego? ¿Encontraste un error? Cuéntame…"></textarea>
+    <div class="fbRow">
+      <span id="fbStatus"></span>
+      <button id="fbSend" class="next-btn" style="display:inline-block; padding:9px 22px; font-size:.85rem;">Enviar →</button>
+    </div>
+  </div>
 </div>
 
 <div class="overlay" id="welcome">
@@ -388,14 +410,15 @@
       <label class="wlabel" for="nameInput">Tu nombre</label>
       <input id="nameInput" maxlength="16" placeholder="Gaijin-kun" autocomplete="off">
       <label class="wlabel">Nivel JLPT</label>
-      <div class="levels">
-        <button class="lvl sel" id="lvlN5">N5</button>
-        <button class="lvl lock" disabled>N4 🔒</button>
-        <button class="lvl lock" disabled>N3 🔒</button>
-        <button class="lvl lock" disabled>N2 🔒</button>
-        <button class="lvl lock" disabled>N1 🔒</button>
+      <div class="levels" id="levelBtns">
+        <button class="lvl sel" data-level="N5">N5<span class="price">gratis</span></button>
+        <button class="lvl lock" data-level="N4">N4 🔒<span class="price">$0.99</span></button>
+        <button class="lvl lock" data-level="N3">N3 🔒<span class="price">$0.99</span></button>
+        <button class="lvl lock" data-level="N2">N2 🔒<span class="price">$0.99</span></button>
+        <button class="lvl lock" data-level="N1">N1 🔒<span class="price">$0.99</span></button>
       </div>
-      <div class="wsmall">Domina el mazo N5 para desbloquear el siguiente nivel</div>
+      <button class="gbtn ghost" id="buyAllBtn" style="margin-top:10px">✨ Desbloquear todos los niveles · $3 USD</button>
+      <div class="wsmall">N5 gratis para siempre · las compras quedan ligadas a tu cuenta</div>
       <button id="startBtn" class="next-btn" style="display:inline-block">¡Empezar! →</button>
     </div>
   </div>
@@ -675,6 +698,59 @@ async function pullCloud(uid){
     return validSave(d) ? d : null;
   }catch(e){ console.error('pullCloud:', e); return null; }
 }
+/* ============ COMPRAS (Stripe Payment Links) ============ */
+/* Crea cada Payment Link en el dashboard de Stripe con metadata level=N4/N3/N2/N1/ALL
+   y pega aquí las URLs (empiezan con https://buy.stripe.com/...) */
+const STRIPE_LINKS = {
+  N4: 'https://buy.stripe.com/3cI8wP2ffc2D6Gr4IP1Jm01',
+  N3: 'https://buy.stripe.com/7sY8wP6vv1nZ9SD5MT1Jm02',
+  N2: 'https://buy.stripe.com/eVq9AT3jjaYz0i3ejp1Jm03',
+  N1: 'https://buy.stripe.com/7sY8wPcTT8QraWHcbh1Jm04',
+  ALL: 'https://buy.stripe.com/00w4gz1bb0jVgh13EL1Jm00',
+};
+let unlocks = [];
+
+function refreshLevels(){
+  document.querySelectorAll('#levelBtns .lvl').forEach(btn=>{
+    const lv = btn.dataset.level;
+    if(lv === 'N5') return;
+    const owned = unlocks.includes(lv) || unlocks.includes('ALL');
+    btn.disabled = false;
+    btn.classList.toggle('lock', !owned);
+    btn.innerHTML = owned
+      ? lv + '<span class="price">✓ tuyo</span>'
+      : lv + ' 🔒<span class="price">$0.99</span>';
+    btn.onclick = ()=> owned
+      ? alert('El mazo '+lv+' llega muy pronto. ¡Gracias por apoyar el juego! 💘')
+      : buyLevel(lv);
+  });
+  const all = unlocks.includes('ALL');
+  $('buyAllBtn').style.display = all ? 'none' : '';
+}
+
+function buyLevel(lv){
+  if(!CLOUD || !fbUser){
+    alert('Inicia sesión primero: la compra se liga a tu cuenta para que no se pierda.');
+    showStep('auth');
+    return;
+  }
+  const url = STRIPE_LINKS[lv];
+  if(!url || url.indexOf('http') !== 0){
+    alert('Las compras se activan muy pronto 🙏');
+    return;
+  }
+  const sep = url.indexOf('?') === -1 ? '?' : '&';
+  window.open(url + sep + 'client_reference_id=' + encodeURIComponent(fbUser.uid)
+    + (fbUser.email ? '&prefilled_email=' + encodeURIComponent(fbUser.email) : ''), '_blank');
+}
+
+function watchEntitlements(uid){
+  firebase.firestore().collection('entitlements').doc(uid).onSnapshot(
+    s=>{ unlocks = (s.exists && s.data().unlocks) || []; refreshLevels(); },
+    ()=>{ /* sin permisos aún: se queda bloqueado */ }
+  );
+}
+
 function bestSave(cloud, local, uid){
   // la nube manda; lo local solo gana si es del MISMO usuario y va más adelantado (juego offline)
   if(cloud && local && local.uid === uid)
@@ -854,6 +930,8 @@ $('btnLocal').onclick = ()=>{
   if(gameStarted) $('welcome').style.display = 'none';   // volver al juego
   else showStep('profile');
 };
+$('buyAllBtn').onclick = ()=> buyLevel('ALL');
+refreshLevels();
 
 /* arranque local inmediato (funciona offline y sin Firebase configurado) */
 const _save = loadGame();
@@ -881,6 +959,7 @@ if(CLOUD){
     fbUser = user;
     sessionUI();
     if(!user) return;
+    watchEntitlements(user.uid);
     const mejor = bestSave(await pullCloud(user.uid), loadGame(), user.uid);
     if(mejor){
       mejor.uid = user.uid;
@@ -916,6 +995,41 @@ if(CLOUD){
 
 /* guardar antes de cerrar la pestaña */
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') pushCloud(); });
+
+/* ============ PEDIDOS / SUGERENCIAS ============ */
+/* Recomendado: crea un form gratis en formspree.io apuntando a jorge@confusedgame.dev
+   y pega aquí el endpoint. Mientras tanto, se usa mailto: como respaldo. */
+const FORMSPREE_ENDPOINT = 'PEGA_AQUI';   // ej. 'https://formspree.io/f/abcdwxyz'
+const FEEDBACK_MAIL = 'jorge@confusedgame.dev';
+const FEEDBACK_SUBJECT = 'Gaijin-Galan Request';
+
+$('fbToggle').onclick = ()=>{
+  const box = $('fbBox');
+  box.style.display = box.style.display==='block' ? 'none' : 'block';
+  if(box.style.display==='block') $('fbText').focus();
+};
+$('fbSend').onclick = async ()=>{
+  const msg = $('fbText').value.trim();
+  if(!msg){ $('fbStatus').textContent = 'Escribe algo primero 🙂'; return; }
+  const meta = ' — jugador: '+playerName+(fbUser&&fbUser.email ? ' ('+fbUser.email+')' : '');
+  if(FORMSPREE_ENDPOINT.indexOf('http')===0){
+    $('fbStatus').textContent = 'Enviando…';
+    try{
+      const r = await fetch(FORMSPREE_ENDPOINT, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({ message: msg+meta, _subject: FEEDBACK_SUBJECT })
+      });
+      if(!r.ok) throw new Error(r.status);
+      $('fbStatus').textContent = '¡Enviado! ありがとう 💌';
+      $('fbText').value = '';
+      return;
+    }catch(e){ /* respaldo mailto abajo */ }
+  }
+  location.href = 'mailto:'+FEEDBACK_MAIL
+    +'?subject='+encodeURIComponent(FEEDBACK_SUBJECT)
+    +'&body='+encodeURIComponent(msg+meta);
+};
 </script>
 </body>
 </html>

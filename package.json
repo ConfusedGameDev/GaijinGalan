@@ -1,0 +1,9 @@
+{
+  "name": "gaijin-galan",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "stripe": "^16.12.0"
+  }
+}
